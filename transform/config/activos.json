@@ -1,0 +1,40 @@
+{
+  "module": "activos",
+  "target_table": "core.activo",
+  "conflict_key": "codigo_activo",
+  "mapping": {
+    "codigo_activo": {"var": "codigo"},
+    "nombre": {"trim": [{"var": "nombre"}]},
+    "fabricante": {"var": "fabricante"},
+    "modelo": {"var": "modelo"},
+    "numero_serie": {"var": "numero_serie"},
+    "tipo_equipo": {"var": "tipo_equipo"},
+    "clasificacion_riesgo": {"var": "clasificacion_riesgo"},
+    "criticidad": {"var": "criticidad"},
+    "ubicacion_path": {"var": "ubicacion_path"},
+    "nivel_2_sede": {"var": "nivel_2_sede"},
+    "nivel_3_servicio": {"var": "nivel_3_servicio"},
+    "proveedor_nombre": {"var": "proveedor"},
+    "fecha_compra": {"parse_date": [{"var": "fecha_compra"}]},
+    "fecha_ultima_calibracion": {"parse_date": [{"var": "fecha_ultima_calibracion"}]},
+    "proxima_calibracion": {"parse_date": [{"var": "proxima_calibracion"}]},
+    "fuera_de_servicio": {"var": "fuera_de_servicio"},
+    "habilitado": {"var": "habilitado"},
+    "plan_mantenimiento": {"var": "plan_mantenimiento"},
+    "horas_uso_promedio_diario": {"var": "horas_uso_promedio_diario"},
+    "costo_compra": {"var": "costo_compra"},
+    "valor_salvamento": {"var": "valor_salvamento"},
+    "vida_util_anios": {"var": "vida_util_anios"}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["codigo", "nombre", "tipo_equipo"],
+    "properties": {
+      "codigo": {"type": "string"},
+      "nombre": {"type": "string"},
+      "tipo_equipo": {"type": "string"},
+      "fuera_de_servicio": {"type": "boolean"},
+      "costo_compra": {"type": "number"}
+    }
+  }
+}

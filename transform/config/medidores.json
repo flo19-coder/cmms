@@ -1,0 +1,20 @@
+{
+  "module": "medidores",
+  "target_table": "core.medidor",
+  "conflict_key": "medidor_id",
+  "mapping": {
+    "medidor_id": {"var": "medidor_id"},
+    "activo_codigo": {"var": "codigo_activo"},
+    "nombre_medidor": {"var": "nombre_medidor"},
+    "tipo_variable": {"var": "tipo_variable"},
+    "unidad": {"var": "unidad"},
+    "valor_umbral_alerta": {"var": "valor_umbral_alerta"}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["medidor_id", "codigo_activo"],
+    "properties": {
+      "medidor_id": {"type": "string"}
+    }
+  }
+}

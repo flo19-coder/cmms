@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Usuarios{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Usuarios del sistema</h1>
+  <div class="muted">Gestión de accesos — solo visible para rol ADMIN</div>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Último login</th></tr>
+    {% for u in usuarios %}
+    <tr>
+      <td>{{ u.username }}</td>
+      <td>{{ u.nombre_completo }}</td>
+      <td><span class="badge badge-info">{{ u.rol }}</span></td>
+      <td>{% if u.activo %}<span class="badge badge-apto">Activo</span>{% else %}<span class="badge badge-alert">Inactivo</span>{% endif %}</td>
+      <td class="muted">{{ u.ultimo_login.strftime("%Y-%m-%d %H:%M") if u.ultimo_login else "Nunca" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h2>Crear/gestionar usuarios</h2>
+  <p class="muted">
+    Por ahora la creación de usuarios se hace desde línea de comando (más seguro
+    que un formulario web para esto):
+  </p>
+  <pre style="background:var(--offwhite); padding:12px; border-radius:8px; font-size:12px; overflow-x:auto;">python3 scripts/manage_users.py create --username jperez --nombre "Juan Pérez" --rol TECNICO</pre>
+</div>
+
+{% endblock %}

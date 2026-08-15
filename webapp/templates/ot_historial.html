@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Historial {{ ot.ot_id }}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Historial — {{ ot.ot_id }}</h1>
+  <div class="muted">{{ ot.activo_codigo }} · Estado actual: {{ ot.estado }}</div>
+</div>
+
+<div class="card">
+  {% if historial %}
+    {% for h in historial %}
+    <div class="row">
+      <div>
+        {% if h.estado_anterior %}
+          <strong>{{ h.estado_anterior }} → {{ h.estado_nuevo }}</strong>
+        {% else %}
+          <strong>Creada — {{ h.estado_nuevo }}</strong>
+        {% endif %}
+        {% if h.comentario %}<br><span class="muted">{{ h.comentario }}</span>{% endif %}
+      </div>
+      <div style="text-align:right;">
+        <span class="muted">{{ h.usuario_nombre or "Sistema" }}</span><br>
+        <span class="muted" style="font-size:11px;">{{ h.fecha_cambio.strftime("%Y-%m-%d %H:%M") }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Sin historial registrado (OT cargada por el pipeline ETL, antes de existir esta auditoría).</p>
+  {% endif %}
+</div>
+
+<div class="card" style="text-align:center;">
+  <a class="btn" href="/kanban">Volver al Kanban</a>
+</div>
+
+{% if checklist_respuestas %}
+<div class="card">
+  <h2>Checklist completado</h2>
+  {% for r in checklist_respuestas %}
+  <div class="row">
+    <div>{{ r.descripcion }}{% if r.comentario %}<br><span class="muted" style="font-size:12px;">{{ r.comentario }}</span>{% endif %}</div>
+    <div>
+      {% if r.tipo_respuesta == 'boolean' %}
+        {% if r.ok %}<span class="badge badge-apto">OK</span>{% else %}<span class="badge badge-alert">Falla</span>{% endif %}
+      {% elif r.tipo_respuesta == 'numero' %}
+        <span class="muted">{{ r.valor_numero }}</span>
+      {% else %}
+        <span class="muted">{{ r.valor_texto }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

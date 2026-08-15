@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Nueva Tarea{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Nueva Tarea</h1>
+  <div class="muted">Queda en estado "Pendiente" al crearse</div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="card" style="padding:10px 14px; {% if category=='error' %}background:#FDECEA; color:#C0392B;{% else %}background:#E8F0FE; color:#1D6FE0;{% endif %} font-size:13px;">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <form method="post">
+    <div class="field-grid">
+      <div class="field-box" style="grid-column:1/-1;">
+        <label>Nombre de la tarea</label>
+        <input type="text" name="nombre_tarea" required placeholder="ej. Inspección de correas de transmisión">
+      </div>
+      <div class="field-box">
+        <label>Activo (opcional)</label>
+        <select name="activo_codigo">
+          <option value="">— Sin activo asociado —</option>
+          {% for a in activos %}
+          <option value="{{ a.codigo_activo }}" {% if a.codigo_activo == activo_preseleccionado %}selected{% endif %}>
+            {{ a.codigo_activo }} — {{ a.nombre }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-box">
+        <label>Frecuencia</label>
+        <select name="frecuencia">
+          <option value="">—</option>
+          {% for f in frecuencias %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field-box">
+        <label>Fecha programada</label>
+        <input type="date" name="fecha_programada">
+      </div>
+      <div class="field-box checkbox-row">
+        <input type="checkbox" id="planificada" name="planificada" checked>
+        <label for="planificada">Planificada</label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn">Crear tarea</button>
+      <a href="/tareas" class="muted" style="align-self:center; text-decoration:none;">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

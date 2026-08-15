@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Nueva OT{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Nueva Orden de Trabajo</h1>
+  <div class="muted">Queda en estado "Pendiente" al crearse</div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="card" style="padding:10px 14px; {% if category=='error' %}background:#FDECEA; color:#C0392B;{% else %}background:#E6F4F3; color:#015B66;{% endif %} font-size:13px;">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <form method="post">
+    <label class="muted" style="font-size:12px; font-weight:700;">ACTIVO</label>
+    <select name="activo_codigo" required style="width:100%; padding:9px; margin:5px 0 14px; border:1px solid #DCE7E7; border-radius:8px;">
+      <option value="">— Selecciona un activo —</option>
+      {% for a in activos %}
+      <option value="{{ a.codigo_activo }}" {% if a.codigo_activo == activo_preseleccionado %}selected{% endif %}>
+        {{ a.codigo_activo }} — {{ a.nombre }} ({{ a.nivel_2_sede }} / {{ a.nivel_3_servicio }})
+      </option>
+      {% endfor %}
+    </select>
+
+    <label class="muted" style="font-size:12px; font-weight:700;">TIPO DE OT</label>
+    <select name="tipo_ot" required style="width:100%; padding:9px; margin:5px 0 14px; border:1px solid #DCE7E7; border-radius:8px;">
+      {% for t in tipos_ot %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+    </select>
+
+    <label class="muted" style="font-size:12px; font-weight:700;">DESCRIPCIÓN DE LA TAREA</label>
+    <textarea name="descripcion_tarea" required rows="3" style="width:100%; padding:9px; margin:5px 0 14px; border:1px solid #DCE7E7; border-radius:8px; font-family:inherit;"></textarea>
+
+    <label class="muted" style="font-size:12px; font-weight:700;">PRIORIDAD</label>
+    <select name="prioridad" required style="width:100%; padding:9px; margin:5px 0 14px; border:1px solid #DCE7E7; border-radius:8px;">
+      {% for p in prioridades %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+    </select>
+
+    <label class="muted" style="font-size:12px; font-weight:700;">FECHA PROGRAMADA</label>
+    <input type="date" name="fecha_programada" required style="width:100%; padding:9px; margin:5px 0 14px; border:1px solid #DCE7E7; border-radius:8px;">
+
+    <label class="muted" style="font-size:12px; font-weight:700;">RESPONSABLE (opcional)</label>
+    <input type="text" name="responsable_nombre" style="width:100%; padding:9px; margin:5px 0 14px; border:1px solid #DCE7E7; border-radius:8px;">
+
+    <label class="muted" style="font-size:12px; font-weight:700;">CLASIFICACIÓN (opcional)</label>
+    <input type="text" name="clasificacion_1" placeholder="ej. GESTION ELECTROMECANICA" style="width:100%; padding:9px; margin:5px 0 20px; border:1px solid #DCE7E7; border-radius:8px;">
+
+    <button type="submit" class="btn" style="border:none; cursor:pointer; font-size:14px;">Crear OT</button>
+    <a href="/kanban" class="muted" style="margin-left:12px; font-size:13px;">Cancelar</a>
+  </form>
+</div>
+
+{% endblock %}

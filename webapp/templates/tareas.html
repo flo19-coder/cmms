@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Tareas{% endblock %}
+{% block content %}
+
+<div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+  <div>
+    <div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.03em;">Tareas</div>
+    <h1 style="margin-top:2px;">Vista Lista</h1>
+    <div class="muted">{{ tareas|length }} tareas — planificadas por el pipeline ETL o creadas manualmente</div>
+  </div>
+  <div class="view-switcher">
+    <a href="/kanban" title="Kanban">▦</a>
+    <a href="/calendario" title="Calendario">📅</a>
+    <a href="/tareas" class="active" title="Lista">☰</a>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="card" style="padding:10px 14px; {% if category=='error' %}background:#FDECEA; color:#C0392B;{% else %}background:#E8F0FE; color:#1D6FE0;{% endif %} font-size:13px;">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <label class="muted" style="font-size:12px; font-weight:700;">FILTRAR POR ESTADO</label>
+    <select name="estado" onchange="this.form.submit()" style="padding:7px 10px; border:1px solid #DCE7E7; border-radius:8px;">
+      <option value="">— Todas —</option>
+      {% for e in ["Pendiente", "Finalizada"] %}
+      <option value="{{ e }}" {% if e == filtro_estado %}selected{% endif %}>{{ e }}</option>
+      {% endfor %}
+    </select>
+    {% if filtro_estado %}<a href="/tareas" class="muted" style="font-size:12px;">Limpiar filtro</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Tarea</th><th>Activo</th><th>Frecuencia</th><th>Fecha programada</th><th>Estado</th><th></th></tr>
+    {% for t in tareas %}
+    <tr>
+      <td>{{ t.nombre_tarea }}</td>
+      <td class="muted">
+        {% if t.activo_codigo %}<a href="/activo/{{ t.activo_codigo }}">{{ t.activo_codigo }}</a> — {{ t.nombre_activo }}{% else %}—{% endif %}
+      </td>
+      <td class="muted">{{ t.frecuencia or "—" }}</td>
+      <td class="muted">{{ t.fecha_programada or "—" }}</td>
+      <td>
+        {% if t.estado == 'Finalizada' %}<span class="badge badge-apto">{{ t.estado }}</span>
+        {% elif t.estado == 'Pendiente' %}<span class="badge badge-atencion">{{ t.estado }}</span>
+        {% else %}<span class="badge badge-info">{{ t.estado or "—" }}</span>{% endif %}
+      </td>
+      <td style="text-align:right;">
+        {% if t.estado != 'Finalizada' %}
+        <form method="post" action="/tareas/{{ t.tarea_id }}/finalizar" style="margin:0;">
+          <button type="submit" class="btn-outline" style="font-size:11px; padding:5px 9px;">✓ Finalizar</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted" style="text-align:center;">Sin tareas registradas todavía.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<a href="/tareas/nueva" class="fab" title="Nueva tarea">+</a>
+
+{% endblock %}

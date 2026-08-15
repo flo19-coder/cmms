@@ -1,0 +1,30 @@
+{
+  "module": "almacenes",
+  "target_table": "core.repuesto_almacen",
+  "conflict_key": "codigo_repuesto",
+  "mapping": {
+    "codigo_repuesto": {"var": "codigo_repuesto"},
+    "nombre": {"var": "nombre"},
+    "almacen": {"var": "almacen"},
+    "stock_actual": {"var": "stock_actual"},
+    "stock_minimo": {"var": "stock_minimo"},
+    "costo_unitario": {"var": "costo_unitario"}
+  },
+  "events": {
+    "on_new_record": ["alerta_stock_bajo"]
+  },
+  "event_rules": {
+    "alerta_stock_bajo": {
+      "<": [{"var": "stock_actual"}, {"var": "stock_minimo"}]
+    }
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["codigo_repuesto", "nombre"],
+    "properties": {
+      "codigo_repuesto": {"type": "string"},
+      "stock_actual": {"type": "number"},
+      "stock_minimo": {"type": "number"}
+    }
+  }
+}

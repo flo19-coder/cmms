@@ -1,0 +1,22 @@
+{
+  "module": "repuestos_import_csv",
+  "descripcion": "Repuestos recibidos como CSV en import/ (connectors/file_connector.py) — reemplaza el caso de uso de Azure Blob Storage sin nube paga.",
+  "target_table": "core.repuesto_almacen",
+  "conflict_key": "codigo_repuesto",
+  "mapping": {
+    "codigo_repuesto": {"var": "codigo"},
+    "nombre": {"var": "nombre"},
+    "almacen": {"var": "almacen"},
+    "stock_actual": {"to_number": [{"var": "stock_actual"}]},
+    "stock_minimo": {"to_number": [{"var": "stock_minimo"}]},
+    "costo_unitario": {"to_number": [{"var": "costo_unitario"}]}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["codigo", "nombre"],
+    "properties": {
+      "codigo": {"type": "string"},
+      "nombre": {"type": "string"}
+    }
+  }
+}

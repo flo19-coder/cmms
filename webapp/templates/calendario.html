@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Calendario{% endblock %}
+{% block content %}
+
+<style>
+  .cal-toolbar-top { display:flex; justify-content:space-between; align-items:center; }
+  .cal-filtro-wrap { position:relative; }
+  .cal-filtro-panel { display:none; position:absolute; right:0; top:38px; background:white; border:1px solid #E4EDED; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); padding:10px; z-index:50; min-width:190px; }
+  .cal-filtro-panel.abierto { display:block; }
+  .cal-filtro-item { display:flex; align-items:center; gap:8px; padding:6px 4px; font-size:12.5px; }
+  .cal-toolbar-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .cal-nav { display:flex; align-items:center; gap:12px; }
+  .cal-nav button { border:none; background:none; cursor:pointer; font-size:16px; color:var(--muted); width:24px; }
+  .cal-nav .cal-mes-actual { font-weight:700; font-size:14px; min-width:120px; }
+  .cal-mes-select { border:1px solid #E4EDED; border-radius:8px; padding:6px 10px; font-size:12.5px; color:var(--ink); background:white; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:1px; background:#E9EEF5; border:1px solid #E9EEF5; border-radius:10px; overflow:hidden; }
+  .cal-dow { background:var(--offwhite); color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; text-align:center; padding:6px 0; }
+  .cal-day { background:white; min-height:110px; padding:4px 6px; font-size:11px; }
+  .cal-day.fin-semana { background:#FAFBFD; }
+  .cal-day.fuera-de-mes { background:#FAFBFD; color:#C3CBD6; }
+  .cal-day-num { text-align:right; font-size:11px; color:var(--muted); margin-bottom:3px; }
+  .cal-day.hoy .cal-day-num { color:#E05A47; font-weight:800; }
+  .cal-day.drag-over { background:#E8F0FE; }
+  .cal-item { display:flex; align-items:center; gap:5px; padding:2px 0; cursor:grab; overflow:hidden; }
+  .cal-item:active { cursor:grabbing; }
+  .cal-item .lbl { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--ink); }
+  .cal-item .pct { color:var(--muted); font-size:10px; flex-shrink:0; }
+  .cal-item input[type=checkbox] { flex-shrink:0; width:11px; height:11px; margin:0; }
+  .cal-mas { color:var(--teal); font-size:10.5px; cursor:pointer; background:none; border:none; padding:2px 0; }
+</style>
+
+<div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+  <div>
+    <div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.03em;">Tareas</div>
+    <h1 style="margin-top:2px;">Vista Calendario</h1>
+  </div>
+  <div class="cal-toolbar-top" style="gap:10px;">
+    <div class="view-switcher">
+      <a href="/kanban" title="Kanban">▦</a>
+      <a href="/calendario" class="active" title="Calendario">📅</a>
+      <a href="/tareas" title="Lista">☰</a>
+    </div>
+    <button class="icon-btn" id="cal-refresh" title="Actualizar">↻</button>
+    <div class="cal-filtro-wrap">
+      <button class="icon-btn" id="cal-filtro-btn" title="Filtrar">▽</button>
+      <div class="cal-filtro-panel" id="cal-filtro-panel">
+        <div class="cal-filtro-item"><input type="checkbox" id="chk-tarea" checked><label for="chk-tarea">Tareas Pendientes</label></div>
+        <div class="cal-filtro-item"><input type="checkbox" id="chk-ot" checked><label for="chk-ot">Órdenes de Trabajo</label></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="cal-toolbar-nav">
+    <div class="cal-nav">
+      <button id="cal-prev" type="button">‹</button>
+      <div class="cal-mes-actual" id="cal-mes-actual"></div>
+      <button id="cal-next" type="button">›</button>
+    </div>
+    <select class="cal-mes-select" disabled><option>Mes</option></select>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+</div>
+
+<a href="/gantt" class="btn-outline" style="display:inline-block; margin-bottom:20px;">Ver como Gantt →</a>
+
+<script>
+(function () {
+  const DOW = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const MAX_VISIBLES = 4;
+  let hoy = new Date();
+  let vista = { anio: hoy.getFullYear(), mes: hoy.getMonth() };
+  let eventosPorDia = {};
+  let expandido = {};
+
+  function fmt(d) { return d.toISOString().slice(0, 10); }
+
+  function rangoVisible() {
+    const primerDiaMes = new Date(vista.anio, vista.mes, 1);
+    const offset = (primerDiaMes.getDay() + 6) % 7;
+    const inicio = new Date(primerDiaMes);
+    inicio.setDate(inicio.getDate() - offset);
+    const fin = new Date(inicio);
+    fin.setDate(fin.getDate() + 41);
+    return { inicio, fin };
+  }
+
+  function claseDot(ev) {
+    if (ev.tipo === 'tarea') return 'dot-pendiente';
+    const e = (ev.estado || '').toLowerCase();
+    if (e === 'finalizada') return 'dot-finalizada';
+    if (e === 'cancelada') return 'dot-cancelada';
+    if (e === 'en proceso') return 'dot-enproceso';
+    if (e === 'en revisión' || e === 'en revision') return 'dot-enrevision';
+    return 'dot-pendiente';
+  }
+
+  function filtros() {
+    return { tarea: document.getElementById('chk-tarea').checked, ot: document.getElementById('chk-ot').checked };
+  }
+
+  function cargarEventos() {
+    const { inicio, fin } = rangoVisible();
+    fetch(`/calendario/eventos.json?desde=${fmt(inicio)}&hasta=${fmt(fin)}`)
+      .then(r => r.json())
+      .then(data => {
+        eventosPorDia = {};
+        (data || []).forEach(ev => {
+          const key = ev.fecha_inicio;
+          if (!eventosPorDia[key]) eventosPorDia[key] = [];
+          eventosPorDia[key].push(ev);
+        });
+        expandido = {};
+        render();
+      });
+  }
+
+  function render() {
+    document.getElementById('cal-mes-actual').textContent = `${MESES[vista.mes]} ${vista.anio}`;
+    const f = filtros();
+
+    const grid = document.getElementById('cal-grid');
+    grid.innerHTML = '';
+    DOW.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'cal-dow';
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+
+    const { inicio } = rangoVisible();
+    const hoyStr = fmt(new Date());
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(inicio);
+      d.setDate(d.getDate() + i);
+      const key = fmt(d);
+      const diaSemana = d.getDay(); // 0=domingo, 6=sábado
+      const cell = document.createElement('div');
+      cell.className = 'cal-day';
+      if (d.getMonth() !== vista.mes) cell.classList.add('fuera-de-mes');
+      if (diaSemana === 0 || diaSemana === 6) cell.classList.add('fin-semana');
+      if (key === hoyStr) cell.classList.add('hoy');
+      cell.dataset.fecha = key;
+
+      const num = document.createElement('div');
+      num.className = 'cal-day-num';
+      num.textContent = String(d.getDate()).padStart(2, '0');
+      cell.appendChild(num);
+
+      const todos = (eventosPorDia[key] || []).filter(ev => f[ev.tipo]);
+      const visibles = expandido[key] ? todos : todos.slice(0, MAX_VISIBLES);
+
+      visibles.forEach(ev => {
+        const item = document.createElement('div');
+        item.className = 'cal-item';
+        item.title = `${ev.titulo} — ${ev.nombre_activo || 'sin activo'} — ${ev.estado || ''}`;
+        item.draggable = true;
+        item.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({ tipo: ev.tipo, id: ev.id }));
+        });
+
+        if (ev.tipo === 'tarea') {
+          item.innerHTML = `<input type="checkbox" ${ev.estado === 'Finalizada' ? 'checked' : ''} disabled><span class="lbl">${ev.titulo}</span>`;
+        } else {
+          item.innerHTML = `<span class="estado-dot ${claseDot(ev)}"></span><span class="lbl">${ev.id}</span>`;
+        }
+        cell.appendChild(item);
+      });
+
+      if (todos.length > MAX_VISIBLES && !expandido[key]) {
+        const mas = document.createElement('button');
+        mas.type = 'button';
+        mas.className = 'cal-mas';
+        mas.textContent = `+${todos.length - MAX_VISIBLES} más`;
+        mas.addEventListener('click', () => { expandido[key] = true; render(); });
+        cell.appendChild(mas);
+      }
+
+      cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('drag-over'); });
+      cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+      cell.addEventListener('drop', e => {
+        e.preventDefault();
+        cell.classList.remove('drag-over');
+        const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+        fetch('/calendario/mover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo: payload.tipo, id: payload.id, nueva_fecha: cell.dataset.fecha }),
+        }).then(r => r.json()).then(resp => {
+          if (resp.error) { alert(resp.error); return; }
+          cargarEventos();
+        });
+      });
+
+      grid.appendChild(cell);
+    }
+  }
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    vista.mes -= 1; if (vista.mes < 0) { vista.mes = 11; vista.anio -= 1; }
+    cargarEventos();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    vista.mes += 1; if (vista.mes > 11) { vista.mes = 0; vista.anio += 1; }
+    cargarEventos();
+  });
+  document.getElementById('cal-refresh').addEventListener('click', cargarEventos);
+  document.getElementById('cal-filtro-btn').addEventListener('click', () => {
+    document.getElementById('cal-filtro-panel').classList.toggle('abierto');
+  });
+  document.addEventListener('click', e => {
+    const wrap = document.querySelector('.cal-filtro-wrap');
+    if (!wrap.contains(e.target)) document.getElementById('cal-filtro-panel').classList.remove('abierto');
+  });
+  document.getElementById('chk-tarea').addEventListener('change', render);
+  document.getElementById('chk-ot').addEventListener('change', render);
+
+  cargarEventos();
+})();
+</script>
+
+{% endblock %}

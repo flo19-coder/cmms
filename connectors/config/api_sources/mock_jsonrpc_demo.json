@@ -1,0 +1,14 @@
+{
+  "name": "mock_jsonrpc_demo",
+  "descripcion": "Servidor JSON-RPC 2.0 local (connectors/mock_jsonrpc_server) — demuestra ApiConnector hablando el protocolo real, sin API paga de terceros.",
+  "base_url_env_var": "MOCK_JSONRPC_BASE_URL",
+  "protocol": "jsonrpc",
+  "auth": {"type": "none"},
+  "entities": {
+    "tareas_externas": {
+      "method": "tareas.list",
+      "params": {},
+      "pagination": {"page_size": 50}
+    }
+  }
+}

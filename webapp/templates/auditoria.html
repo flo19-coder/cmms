@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Auditoría{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Auditoría del sistema</h1>
+  <div class="muted">Últimos {{ eventos|length }} eventos — quién hizo qué, cuándo, desde qué IP</div>
+</div>
+
+<div class="card">
+  <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <label class="muted" style="font-size:12px; font-weight:700;">FILTRAR POR ACCIÓN</label>
+    <select name="accion" onchange="this.form.submit()" style="padding:7px 10px; border:1px solid #DCE7E7; border-radius:8px;">
+      <option value="">— Todas —</option>
+      {% for a in acciones %}
+      <option value="{{ a }}" {% if a == filtro_accion %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+    {% if filtro_accion %}<a href="/auditoria" class="muted" style="font-size:12px;">Limpiar filtro</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Fecha</th><th>Acción</th><th>Usuario</th><th>Entidad</th><th>IP</th><th>Detalles</th></tr>
+    {% for e in eventos %}
+    <tr>
+      <td class="muted" style="white-space:nowrap;">{{ e.fecha.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+      <td>
+        {% if 'FALLIDO' in e.accion %}<span class="badge badge-alert">{{ e.accion }}</span>
+        {% elif e.accion in ['LOGIN','CREAR_OT','FINALIZAR_OT'] %}<span class="badge badge-apto">{{ e.accion }}</span>
+        {% else %}<span class="badge badge-info">{{ e.accion }}</span>{% endif %}
+      </td>
+      <td>{{ e.nombre_completo or "(anónimo)" }}</td>
+      <td class="muted">{{ e.entidad_tipo or "" }}{% if e.entidad_id %} · {{ e.entidad_id }}{% endif %}</td>
+      <td class="muted" style="font-size:11px;">{{ e.ip_address or "—" }}</td>
+      <td class="muted" style="font-size:11px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        {{ e.detalles | tojson if e.detalles else "" }}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted" style="text-align:center;">Sin eventos registrados todavía.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

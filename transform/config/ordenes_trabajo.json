@@ -1,0 +1,39 @@
+{
+  "module": "ordenes_trabajo",
+  "target_table": "core.orden_trabajo",
+  "conflict_key": "ot_id",
+  "mapping": {
+    "ot_id": {"var": "ot_id"},
+    "activo_codigo": {"var": "codigo_activo"},
+    "responsable_nombre": {"var": "responsable"},
+    "tipo_ot": {"var": "tipo_ot"},
+    "descripcion_tarea": {"var": "descripcion_tarea"},
+    "estado": {"var": "estado"},
+    "clasificacion_1": {"var": "clasificacion_1"},
+    "fecha_programada": {"parse_date": [{"var": "fecha_programada"}]},
+    "fecha_calculada": {"parse_date": [{"var": "fecha_calculada"}]},
+    "fecha_realizacion": {"parse_date": [{"var": "fecha_realizacion"}]},
+    "porcentaje_avance": {"var": "porcentaje_avance"},
+    "prioridad": {"var": "prioridad"},
+    "tiempo_fuera_servicio_horas": {"default_if_null": [{"var": "tiempo_fuera_servicio_horas"}, 0]}
+  },
+  "events": {
+    "on_new_record": ["notify_if_critico"]
+  },
+  "event_rules": {
+    "notify_if_critico": {
+      "and": [
+        {"==": [{"var": "prioridad"}, "Muy Alta"]},
+        {"==": [{"var": "tipo_ot"}, "CORRECTIVO"]}
+      ]
+    }
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["ot_id", "codigo_activo", "estado"],
+    "properties": {
+      "ot_id": {"type": "string"},
+      "estado": {"enum": ["Pendiente", "En Proceso", "En Revisión", "Finalizada", "Cancelada"]}
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "module": "repuestos_usados",
+  "target_table": "core.ot_repuesto",
+  "conflict_key": ["ot_id", "codigo_repuesto"],
+  "mapping": {
+    "ot_id": {"var": "ot_id"},
+    "codigo_repuesto": {"var": "codigo_repuesto"},
+    "cantidad": {"var": "cantidad"}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["ot_id", "codigo_repuesto"],
+    "properties": {
+      "ot_id": {"type": "string"},
+      "codigo_repuesto": {"type": "string"}
+    }
+  }
+}

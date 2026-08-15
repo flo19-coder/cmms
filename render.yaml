@@ -1,0 +1,53 @@
+# Blueprint de Render — despliegue gratuito de la webapp CMMS + su
+# Postgres. En Render: New -> Blueprint -> selecciona este repo -> Apply.
+# Aprovisiona AMBOS servicios juntos y conecta las credenciales de la
+# base de datos automáticamente (fromDatabase) — no hay que copiar/pegar
+# ninguna connection string a mano.
+#
+# Nota: el plan "free" de Render Postgres expira a los 90 días (hay que
+# subir de plan o recrearla después de esa fecha) — ver README.md.
+databases:
+  - name: cmms-dw
+    databaseName: cmms_dw
+    user: cmms_admin
+    plan: free
+
+services:
+  - type: web
+    name: cmms-webapp
+    runtime: python
+    plan: free
+    buildCommand: pip install -r webapp/requirements.txt
+    startCommand: python scripts/bootstrap_schema.py && python scripts/seed_demo_users.py && cd webapp && gunicorn -w 2 -b 0.0.0.0:$PORT app:app
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: CMMS_DW_HOST
+        fromDatabase:
+          name: cmms-dw
+          property: host
+      - key: CMMS_DW_PORT
+        fromDatabase:
+          name: cmms-dw
+          property: port
+      - key: CMMS_DW_NAME
+        fromDatabase:
+          name: cmms-dw
+          property: database
+      - key: CMMS_DW_USER
+        fromDatabase:
+          name: cmms-dw
+          property: user
+      - key: CMMS_DW_PASSWORD
+        fromDatabase:
+          name: cmms-dw
+          property: password
+      - key: CMMS_SECRET_KEY
+        generateValue: true
+      - key: CMMS_API_KEY
+        generateValue: true
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: CMMS_SHOW_DEMO_LOGIN_HINT
+        value: "true"

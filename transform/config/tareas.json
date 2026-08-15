@@ -1,0 +1,22 @@
+{
+  "module": "tareas",
+  "target_table": "core.tarea",
+  "conflict_key": "tarea_id",
+  "mapping": {
+    "tarea_id": {"var": "tarea_id"},
+    "activo_codigo": {"var": "codigo_activo"},
+    "ot_id": {"var": "ot_id"},
+    "nombre_tarea": {"var": "nombre_tarea"},
+    "planificada": {"var": "planificada"},
+    "frecuencia": {"var": "frecuencia"},
+    "fecha_programada": {"parse_date": [{"var": "fecha_programada"}]},
+    "estado": {"var": "estado"}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["tarea_id", "codigo_activo"],
+    "properties": {
+      "tarea_id": {"type": "string"}
+    }
+  }
+}

@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% block title %}{{ activo.nombre }} — {{ activo.codigo_activo }}{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="card" style="padding:10px 14px; {% if category=='error' %}background:#FDECEA; color:#C0392B;{% else %}background:#E6F4F3; color:#015B66;{% endif %} font-size:13px;">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="breadcrumb">
+  <a class="back-link" href="/activos">←</a>
+  {{ activo.nivel_2_sede or "—" }} / {{ activo.nivel_3_servicio or "—" }}{% if activo.ubicacion_path %} / {{ activo.ubicacion_path.replace('/', ' / ') }}{% endif %}
+</div>
+
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
+    <div>
+      <h1>{{ activo.nombre }}</h1>
+      <div class="muted">{{ activo.codigo_activo }} · {{ activo.fabricante }} {{ activo.modelo }}</div>
+    </div>
+    {% if ultimo_estado == "APTO" %}
+      <span class="badge badge-apto">✓ APTO</span>
+    {% elif ultimo_estado == "EN ATENCIÓN" %}
+      <span class="badge badge-atencion">⚠ EN ATENCIÓN</span>
+    {% elif ultimo_estado == "APTO CON OBSERVACIÓN" %}
+      <span class="badge badge-atencion">APTO CON OBSERVACIÓN</span>
+    {% else %}
+      <span class="badge badge-info">SIN HISTORIAL</span>
+    {% endif %}
+  </div>
+  <div style="margin-top:14px;">
+    <span class="badge badge-info">Criticidad: {{ activo.criticidad or "—" }}</span>
+    {% if activo.fuera_de_servicio %}<span class="badge badge-alert">FUERA DE SERVICIO</span>{% endif %}
+    {% if not activo.habilitado %}<span class="badge badge-alert">DESHABILITADO</span>{% endif %}
+    {% if activo.calibracion_vencida %}<span class="badge badge-alert">Inspección vencida</span>{% endif %}
+  </div>
+</div>
+
+<div class="ficha-layout">
+  <!-- ============ SIDEBAR: foto + QR + menú de pestañas ============ -->
+  <div class="ficha-sidebar">
+    <div class="card">
+      {% if activo.foto_filename %}
+        <img src="{{ url_for('static', filename='fotos_activos/' + activo.foto_filename) }}" style="width:100%; border-radius:10px; margin-bottom:10px;">
+      {% else %}
+        <div style="width:100%; aspect-ratio:1; background:var(--offwhite); border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
+          <span class="muted" style="font-size:12px;">Sin foto</span>
+        </div>
+      {% endif %}
+      {% if can_edit %}
+      <form method="post" action="/activo/{{ activo.codigo_activo }}/foto" enctype="multipart/form-data">
+        <input type="file" name="foto" accept="image/png,image/jpeg,image/webp" style="font-size:11px; width:100%;">
+        <button type="submit" class="btn" style="width:100%; margin-top:6px; font-size:12px; padding:6px 10px;">
+          {% if activo.foto_filename %}Reemplazar foto{% else %}Subir foto{% endif %}
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="card" style="text-align:center;">
+      <img src="/activo/{{ activo.codigo_activo }}/qr.png" style="width:100%; max-width:160px; border:1px solid #E4EDED; border-radius:8px; padding:8px; background:white;">
+      <a href="/activo/{{ activo.codigo_activo }}/qr.png" download="{{ activo.codigo_activo }}_qr.png" class="btn-outline" style="display:block; margin-top:8px; font-size:12px; padding:6px 10px;">Descargar QR</a>
+    </div>
+
+    <div class="card">
+      <nav class="tabs-nav">
+        <button type="button" data-tab="general">General</button>
+        <button type="button" data-tab="formulario">Formulario Personalizado</button>
+        <button type="button" data-tab="estado_salud">Estado de Salud</button>
+        <button type="button" data-tab="financiero">Financiero</button>
+        <button type="button" data-tab="terceros">Terceros</button>
+        <button type="button" data-tab="repuestos">Repuestos y Suministros</button>
+        <button type="button" data-tab="historiales">Historiales</button>
+        <button type="button" data-tab="adjuntos">Adjuntos</button>
+        <button type="button" data-tab="documental">Gestión Documental</button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ============ CONTENIDO DE PESTAÑAS ============ -->
+  <div class="ficha-main">
+
+    <div id="tab-general" class="tab-panel card">
+      <h2>General</h2>
+      <form method="post" action="/activo/{{ activo.codigo_activo }}/actualizar">
+        <input type="hidden" name="volver_a_pestana" value="general">
+        <div class="field-grid">
+          <div class="field-box">
+            <label>Nombre</label>
+            <input type="text" name="nombre" value="{{ activo.nombre or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Código</label>
+            <input type="text" value="{{ activo.codigo_activo }}" disabled>
+          </div>
+          <div class="field-box">
+            <label>Fabricante</label>
+            <input type="text" name="fabricante" value="{{ activo.fabricante or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Modelo</label>
+            <input type="text" name="modelo" value="{{ activo.modelo or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Número de Serie</label>
+            <input type="text" name="numero_serie" value="{{ activo.numero_serie or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Pedido</label>
+            <input type="text" name="numero_pedido" value="{{ activo.numero_pedido or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Tipo</label>
+            <input type="text" name="tipo_equipo" value="{{ activo.tipo_equipo or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Código de Barras / NFC</label>
+            <input type="text" name="codigo_barras" value="{{ activo.codigo_barras or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Prioridad</label>
+            <select name="criticidad" {% if not can_edit %}disabled{% endif %}>
+              {% for opt in ["Muy Alta", "Alta", "Media", "Baja"] %}
+              <option value="{{ opt }}" {% if activo.criticidad == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-box">
+            <label>Clasificación 1</label>
+            <input type="text" name="clasificacion_1" value="{{ activo.clasificacion_1 or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Clasificación 2</label>
+            <input type="text" name="clasificacion_2" value="{{ activo.clasificacion_2 or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Proveedor</label>
+            <input type="text" name="proveedor_nombre" value="{{ activo.proveedor_nombre or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Fecha de Compra</label>
+            <input type="date" name="fecha_compra" value="{{ activo.fecha_compra.isoformat() if activo.fecha_compra else '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Horas de uso promedio diario</label>
+            <input type="number" step="0.1" name="horas_uso_promedio_diario" value="{{ activo.horas_uso_promedio_diario if activo.horas_uso_promedio_diario is not none else '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Sede</label>
+            <input type="text" name="nivel_2_sede" value="{{ activo.nivel_2_sede or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Servicio / Área</label>
+            <input type="text" name="nivel_3_servicio" value="{{ activo.nivel_3_servicio or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box" style="grid-column:1/-1;">
+            <label>Ubicación (ruta completa)</label>
+            <input type="text" name="ubicacion_path" value="{{ activo.ubicacion_path or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box" style="grid-column:1/-1;">
+            <label>Plan de Tareas</label>
+            <input type="text" name="plan_mantenimiento" value="{{ activo.plan_mantenimiento or '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+        </div>
+
+        <div class="field-grid" style="margin-top:16px;">
+          <div class="field-box checkbox-row">
+            <input type="checkbox" id="habilitado" name="habilitado" {% if activo.habilitado %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+            <label for="habilitado">Habilitado</label>
+          </div>
+          <div class="field-box checkbox-row">
+            <input type="checkbox" id="fuera_de_servicio" name="fuera_de_servicio" {% if activo.fuera_de_servicio %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+            <label for="fuera_de_servicio">Fuera de servicio</label>
+          </div>
+          <div class="field-box checkbox-row">
+            <input type="checkbox" id="visible_para_todos" name="visible_para_todos" {% if activo.visible_para_todos %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+            <label for="visible_para_todos">Visible para todos</label>
+          </div>
+        </div>
+
+        {% if can_edit %}
+        <div class="form-actions">
+          <button type="submit" class="btn">Guardar cambios</button>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+
+    <div id="tab-formulario" class="tab-panel card">
+      <h2>Formulario Personalizado</h2>
+      <p class="muted" style="font-size:12px; margin-top:-4px;">Campos libres definidos para este activo (nombre / valor).</p>
+      <form method="post" action="/activo/{{ activo.codigo_activo }}/formulario">
+        <div id="formulario-filas">
+          {% for k, v in (activo.formulario_personalizado or {}).items() %}
+          <div class="upload-form">
+            <div class="field-box"><label>Campo</label><input type="text" name="campo_nombre" value="{{ k }}" {% if not can_edit %}disabled{% endif %}></div>
+            <div class="field-box"><label>Valor</label><input type="text" name="campo_valor" value="{{ v }}" {% if not can_edit %}disabled{% endif %}></div>
+          </div>
+          {% endfor %}
+          {% if can_edit %}
+          {% for _ in range(3) %}
+          <div class="upload-form">
+            <div class="field-box"><label>Campo</label><input type="text" name="campo_nombre" placeholder="ej. Voltaje nominal"></div>
+            <div class="field-box"><label>Valor</label><input type="text" name="campo_valor" placeholder="ej. 220V"></div>
+          </div>
+          {% endfor %}
+          {% endif %}
+        </div>
+        {% if not (activo.formulario_personalizado or {}) and not can_edit %}
+          <p class="muted">Sin campos personalizados todavía.</p>
+        {% endif %}
+        {% if can_edit %}
+        <div class="form-actions">
+          <button type="submit" class="btn">Guardar formulario</button>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+
+    <div id="tab-estado_salud" class="tab-panel card">
+      <h2>Estado de Salud</h2>
+      {% if horas_estimadas is not none %}
+        <div class="kpi">
+          <div><div class="num">{{ horas_estimadas }}</div><div class="lbl">horas estimadas de uso*</div></div>
+          <div><div class="num">{{ stats.total_ots or 0 }}</div><div class="lbl">OTs totales</div></div>
+          <div><div class="num">{{ stats.pct_finalizadas or 0 }}%</div><div class="lbl">OTs finalizadas</div></div>
+          <div><div class="num">{{ stats.horas_downtime_total or 0 }}</div><div class="lbl">horas fuera de servicio</div></div>
+        </div>
+        <p class="muted" style="font-size:11px; margin-top:8px;">*Estimado a partir de horas de uso/día declaradas × días desde la compra. No es lectura de horómetro real.</p>
+      {% else %}
+        <p class="muted">Sin datos suficientes para estimar horas de uso.</p>
+      {% endif %}
+
+      {% if checklist_referencia %}
+      <h2 style="margin-top:18px;">Checklist de mantenimiento aplicable</h2>
+      <p class="muted" style="font-size:12px; margin-bottom:10px;">{{ checklist_referencia.nombre }}</p>
+      {% for item in checklist_referencia.checklist_items %}
+      <div class="row">
+        <div style="font-size:13px;">{{ item.descripcion }}{% if item.obligatorio %} <span style="color:#C0392B;">*</span>{% endif %}</div>
+        <div class="muted" style="font-size:11px;">{{ item.tipo_respuesta }}</div>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      {% if lecturas %}
+      <h2 style="margin-top:18px;">Últimas lecturas de sensor</h2>
+      <table>
+        <tr><th>Fecha</th><th>Valor</th><th>Alerta</th></tr>
+        {% for l in lecturas %}
+        <tr>
+          <td>{{ l.fecha_lectura.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{{ l.valor }}</td>
+          <td>{% if l.en_alerta %}<span class="badge badge-alert">Sí</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    </div>
+
+    <div id="tab-financiero" class="tab-panel card">
+      <h2>Financiero</h2>
+      <form method="post" action="/activo/{{ activo.codigo_activo }}/actualizar">
+        <input type="hidden" name="volver_a_pestana" value="financiero">
+        <div class="field-grid">
+          <div class="field-box">
+            <label>Moneda</label>
+            <select name="moneda" {% if not can_edit %}disabled{% endif %}>
+              {% for opt in ["PEN", "USD"] %}
+              <option value="{{ opt }}" {% if activo.moneda == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-box">
+            <label>Costo de Compra</label>
+            <input type="number" step="0.01" name="costo_compra" value="{{ activo.costo_compra if activo.costo_compra is not none else '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Valor de Salvamento</label>
+            <input type="number" step="0.01" name="valor_salvamento" value="{{ activo.valor_salvamento if activo.valor_salvamento is not none else '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+          <div class="field-box">
+            <label>Vida Útil (años)</label>
+            <input type="number" step="0.1" name="vida_util_anios" value="{{ activo.vida_util_anios if activo.vida_util_anios is not none else '' }}" {% if not can_edit %}disabled{% endif %}>
+          </div>
+        </div>
+        {% if can_edit %}
+        <div class="form-actions">
+          <button type="submit" class="btn">Guardar cambios</button>
+        </div>
+        {% endif %}
+      </form>
+
+      {% if financiero %}
+      <h2 style="margin-top:18px;">Depreciación estimada (lineal)</h2>
+      <div class="kpi">
+        <div><div class="num">{{ activo.moneda }} {{ "%.2f"|format(financiero.depreciacion_anual) }}</div><div class="lbl">depreciación / año</div></div>
+        <div><div class="num">{{ financiero.anios_transcurridos }}</div><div class="lbl">años transcurridos</div></div>
+        <div><div class="num">{{ activo.moneda }} {{ "%.2f"|format(financiero.valor_actual_estimado) }}</div><div class="lbl">valor en libros estimado</div></div>
+        <div><div class="num">{{ financiero.porcentaje_depreciado }}%</div><div class="lbl">depreciado</div></div>
+      </div>
+      {% else %}
+      <p class="muted" style="margin-top:14px;">Completa costo de compra y vida útil para estimar la depreciación.</p>
+      {% endif %}
+    </div>
+
+    <div id="tab-terceros" class="tab-panel card">
+      <h2>Terceros</h2>
+      {% if terceros %}
+        {% for t in terceros %}
+        <div class="row" style="align-items:flex-start;">
+          <div>
+            <strong>{{ t.nombre }}</strong> <span class="badge badge-info">{{ t.tipo }}</span><br>
+            <span class="muted" style="font-size:12px;">
+              {% if t.contacto_nombre %}{{ t.contacto_nombre }} · {% endif %}
+              {% if t.telefono %}{{ t.telefono }} · {% endif %}
+              {% if t.email %}{{ t.email }}{% endif %}
+            </span>
+            {% if t.notas %}<div class="muted" style="font-size:12px; margin-top:2px;">{{ t.notas }}</div>{% endif %}
+          </div>
+          {% if can_edit %}
+          <form method="post" action="/activo/{{ activo.codigo_activo }}/terceros/{{ t.tercero_id }}/eliminar" onsubmit="return confirm('¿Eliminar este tercero?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">Sin terceros registrados para este equipo.</p>
+      {% endif %}
+
+      {% if can_edit %}
+      <h2 style="margin-top:18px;">Agregar tercero</h2>
+      <form method="post" action="/activo/{{ activo.codigo_activo }}/terceros/nuevo">
+        <div class="field-grid">
+          <div class="field-box">
+            <label>Tipo</label>
+            <select name="tipo">
+              {% for opt in ["Proveedor", "Fabricante", "Servicio Técnico", "Soporte"] %}
+              <option value="{{ opt }}">{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-box"><label>Nombre</label><input type="text" name="nombre" required></div>
+          <div class="field-box"><label>Contacto</label><input type="text" name="contacto_nombre"></div>
+          <div class="field-box"><label>Teléfono</label><input type="text" name="telefono"></div>
+          <div class="field-box"><label>Email</label><input type="text" name="email"></div>
+          <div class="field-box" style="grid-column:1/-1;"><label>Notas</label><input type="text" name="notas"></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn">Agregar tercero</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+
+    <div id="tab-repuestos" class="tab-panel card">
+      <h2>Repuestos y Suministros</h2>
+      {% if repuestos_usados %}
+        <table>
+          <tr><th>Repuesto</th><th>Cant.</th><th>OT</th><th>Fecha</th></tr>
+          {% for r in repuestos_usados %}
+          <tr>
+            <td>{{ r.nombre }}</td>
+            <td>{{ r.cantidad }}</td>
+            <td>{{ r.ot_id }}</td>
+            <td>{{ r.fecha_programada }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p class="muted">Sin repuestos registrados para este equipo.</p>
+      {% endif %}
+    </div>
+
+    <div id="tab-historiales" class="tab-panel card">
+      <h2>Historial de órdenes de trabajo</h2>
+      {% if historial %}
+        {% for h in historial %}
+        <div class="row">
+          <div>
+            <strong>{{ h.ot_id }}</strong> — {{ h.tipo_ot }}<br>
+            <span class="muted">{{ h.fecha_programada }}{% if h.fecha_realizacion %} → {{ h.fecha_realizacion }}{% endif %}</span>
+          </div>
+          <div style="text-align:right;">
+            <span class="badge {% if h.estado == 'Finalizada' %}badge-apto{% elif h.estado == 'Pendiente' %}badge-atencion{% else %}badge-info{% endif %}">{{ h.estado }}</span><br>
+            <span class="muted">{{ h.porcentaje_avance }}%</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">Sin órdenes de trabajo registradas todavía.</p>
+      {% endif %}
+    </div>
+
+    <div id="tab-adjuntos" class="tab-panel card">
+      <h2>Adjuntos</h2>
+      {% if can_edit %}
+      <form method="post" action="/activo/{{ activo.codigo_activo }}/adjuntos" enctype="multipart/form-data" class="upload-form">
+        <div class="field-box"><label>Archivo</label><input type="file" name="archivo" required></div>
+        <button type="submit" class="btn">Subir adjunto</button>
+      </form>
+      {% endif %}
+      {% if adjuntos %}
+        {% for a in adjuntos %}
+        <div class="row">
+          <div>
+            <a href="/activo/{{ activo.codigo_activo }}/adjuntos/{{ a.adjunto_id }}/descargar">{{ a.nombre_original }}</a><br>
+            <span class="muted" style="font-size:11px;">{{ (a.tamano_bytes / 1024) | round(1) if a.tamano_bytes else 0 }} KB · {{ a.subido_at.strftime("%Y-%m-%d %H:%M") }}</span>
+          </div>
+          {% if can_edit %}
+          <form method="post" action="/activo/{{ activo.codigo_activo }}/adjuntos/{{ a.adjunto_id }}/eliminar" onsubmit="return confirm('¿Eliminar este adjunto?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">Sin adjuntos todavía.</p>
+      {% endif %}
+    </div>
+
+    <div id="tab-documental" class="tab-panel card">
+      <h2>Gestión Documental</h2>
+      {% if can_edit %}
+      <form method="post" action="/activo/{{ activo.codigo_activo }}/documentos" enctype="multipart/form-data">
+        <div class="upload-form">
+          <div class="field-box"><label>Categoría</label>
+            <select name="categoria">
+              {% for opt in ["Manual", "Certificado", "Plano", "Garantía", "Otro"] %}
+              <option value="{{ opt }}">{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-box"><label>Nombre</label><input type="text" name="nombre" required></div>
+          <div class="field-box"><label>Versión</label><input type="text" name="version"></div>
+          <div class="field-box"><label>Vigencia</label><input type="date" name="fecha_vigencia"></div>
+          <div class="field-box"><label>Archivo</label><input type="file" name="archivo" required></div>
+          <button type="submit" class="btn">Agregar documento</button>
+        </div>
+      </form>
+      {% endif %}
+      {% if documentos %}
+        {% for d in documentos %}
+        <div class="row">
+          <div>
+            <a href="/activo/{{ activo.codigo_activo }}/documentos/{{ d.documento_id }}/descargar">{{ d.nombre }}</a>
+            <span class="badge badge-info">{{ d.categoria }}</span><br>
+            <span class="muted" style="font-size:11px;">
+              {% if d.version %}v{{ d.version }} · {% endif %}
+              {% if d.fecha_vigencia %}vigente hasta {{ d.fecha_vigencia }} · {% endif %}
+              {{ d.subido_at.strftime("%Y-%m-%d %H:%M") }}
+            </span>
+          </div>
+          {% if can_edit %}
+          <form method="post" action="/activo/{{ activo.codigo_activo }}/documentos/{{ d.documento_id }}/eliminar" onsubmit="return confirm('¿Eliminar este documento?');">
+            <button type="submit" class="btn-danger">Eliminar</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">Sin documentos todavía.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<div class="card" style="text-align:center;">
+  <a class="btn" href="/panel/hoy">Ver actividades del día →</a>
+</div>
+
+<script>
+(function () {
+  var botones = document.querySelectorAll('.tabs-nav button[data-tab]');
+  var paneles = document.querySelectorAll('.tab-panel');
+  function activar(tab) {
+    botones.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+    paneles.forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + tab); });
+  }
+  botones.forEach(function (b) {
+    b.addEventListener('click', function () {
+      activar(b.dataset.tab);
+      history.replaceState(null, '', '#' + b.dataset.tab);
+    });
+  });
+  var inicial = (location.hash || '#general').substring(1);
+  if (!document.getElementById('tab-' + inicial)) inicial = 'general';
+  activar(inicial);
+})();
+</script>
+
+{% endblock %}

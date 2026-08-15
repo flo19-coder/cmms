@@ -1,0 +1,12 @@
+{
+  "name": "erp_mysql_demo",
+  "descripcion": "ERP externo de la Sede Arequipa (MySQL) — demuestra el conector SQL genérico migrando datos hacia el Postgres del CMMS.",
+  "dialect": "mysql+pymysql",
+  "connection_env_var": "ERP_MYSQL_URL",
+  "entities": {
+    "equipos": {
+      "query": "SELECT codigo, nombre, fabricante, modelo, ubicacion, criticidad, updated_at FROM equipos_erp WHERE updated_at > :updated_since",
+      "incremental": true
+    }
+  }
+}

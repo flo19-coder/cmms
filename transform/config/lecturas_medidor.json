@@ -1,0 +1,19 @@
+{
+  "module": "lecturas_medidor",
+  "target_table": "core.lectura_medidor",
+  "conflict_key": ["medidor_id", "fecha_lectura"],
+  "mapping": {
+    "medidor_id": {"var": "medidor_id"},
+    "fecha_lectura": {"var": "fecha_lectura"},
+    "valor": {"var": "valor"},
+    "en_alerta": {"var": "en_alerta"}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["medidor_id", "fecha_lectura", "valor"],
+    "properties": {
+      "medidor_id": {"type": "string"},
+      "valor": {"type": "number"}
+    }
+  }
+}

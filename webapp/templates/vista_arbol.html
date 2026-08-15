@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Vista Árbol{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Vista Árbol</h1>
+  <div class="muted">Clínica Internacional / Sede / Área técnica / Activo</div>
+</div>
+
+<div class="card">
+  <details open style="margin-bottom:6px;">
+    <summary style="font-weight:800; cursor:pointer; padding:6px 0;">🏥 Clínica Internacional</summary>
+    <div style="padding-left:20px;">
+      {% for sede, servicios in arbol.items() %}
+      <details style="margin:6px 0;">
+        <summary style="font-weight:700; cursor:pointer; padding:6px 0; color:var(--teal-dark);">📍 {{ sede }}
+          <span class="badge badge-info">{{ servicios.values() | map('length') | sum }} activos</span>
+        </summary>
+        <div style="padding-left:20px;">
+          {% for servicio, activos in servicios.items() %}
+          <details style="margin:4px 0;">
+            <summary style="font-weight:600; cursor:pointer; padding:5px 0; color:var(--muted);">⚙ {{ servicio }} <span class="muted">({{ activos|length }})</span></summary>
+            <div style="padding-left:18px;">
+              {% for a in activos %}
+              <a href="/activo/{{ a.codigo_activo }}" style="text-decoration:none; color:inherit;">
+                <div class="row" style="cursor:pointer;">
+                  <div>
+                    {{ a.nombre }}
+                    {% if a.fuera_de_servicio %}<span class="badge badge-alert" style="margin-left:6px;">Fuera de servicio</span>{% endif %}
+                    <br><span class="muted">{{ a.codigo_activo }} · {{ a.tipo_equipo }}</span>
+                  </div>
+                  <div>
+                    {% if a.criticidad == 'Muy Alta' %}<span class="badge badge-alert">{{ a.criticidad }}</span>
+                    {% elif a.criticidad == 'Alta' %}<span class="badge badge-atencion">{{ a.criticidad }}</span>
+                    {% else %}<span class="badge badge-info">{{ a.criticidad }}</span>{% endif %}
+                  </div>
+                </div>
+              </a>
+              {% endfor %}
+            </div>
+          </details>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+  </details>
+</div>
+
+{% endblock %}

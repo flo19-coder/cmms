@@ -1,0 +1,19 @@
+{
+  "module": "recursos_humanos",
+  "target_table": "core.responsable",
+  "conflict_key": "codigo_externo",
+  "mapping": {
+    "codigo_externo": {"var": "codigo"},
+    "nombre_completo": {"trim": [{"var": "nombre_completo"}]},
+    "rol": {"var": "rol"},
+    "email": {"lower": [{"var": "email"}]}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["codigo", "nombre_completo"],
+    "properties": {
+      "codigo": {"type": "string"},
+      "nombre_completo": {"type": "string"}
+    }
+  }
+}

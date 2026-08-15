@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Automatizador{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Automatizador</h1>
+  <div class="muted">Eventos disparados por reglas de datos (JSON Logic) del motor ETL — {{ eventos|length }} más recientes</div>
+</div>
+
+<div class="card">
+  <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <label class="muted" style="font-size:12px; font-weight:700;">FILTRAR POR MÓDULO</label>
+    <select name="modulo" onchange="this.form.submit()" style="padding:7px 10px; border:1px solid #DCE7E7; border-radius:8px;">
+      <option value="">— Todos —</option>
+      {% for m in modulos %}
+      <option value="{{ m }}" {% if m == filtro_modulo %}selected{% endif %}>{{ m }}</option>
+      {% endfor %}
+    </select>
+    {% if filtro_modulo %}<a href="/automatizador" class="muted" style="font-size:12px;">Limpiar filtro</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Fecha</th><th>Módulo</th><th>Evento</th><th>Registro</th><th>Acción</th><th>Resultado</th></tr>
+    {% for e in eventos %}
+    <tr>
+      <td class="muted" style="white-space:nowrap;">{{ e.fecha.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+      <td class="muted">{{ e.modulo }}</td>
+      <td><span class="badge badge-info">{{ e.evento_nombre }}</span></td>
+      <td class="muted">{{ e.record_key or "—" }}</td>
+      <td class="muted">{{ e.accion }}</td>
+      <td>
+        {% if e.resultado and e.resultado.startswith('error') %}<span class="badge badge-alert">{{ e.resultado }}</span>
+        {% else %}<span class="badge badge-apto">{{ e.resultado }}</span>{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted" style="text-align:center;">Sin eventos disparados todavía.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

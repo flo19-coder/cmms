@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Finalizar {{ ot.ot_id }}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Finalizar {{ ot.ot_id }}</h1>
+  <div class="muted">{{ ot.descripcion_tarea }} — {{ ot.activo_codigo }}</div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="card" style="padding:10px 14px; {% if category=='error' %}background:#FDECEA; color:#C0392B;{% else %}background:#E6F4F3; color:#015B66;{% endif %} font-size:13px;">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<form method="post">
+
+{% if checklist %}
+<div class="card">
+  <h2>Checklist de mantenimiento — {{ checklist.nombre }}</h2>
+  <p class="muted" style="font-size:12px; margin-bottom:14px;">
+    Los ítems marcados con * son obligatorios para poder finalizar.
+  </p>
+  {% for item in checklist.checklist_items %}
+  <div style="padding:12px 0; border-bottom:1px dashed #E4EDED;">
+    <div style="font-size:13.5px; margin-bottom:8px;">
+      {{ item.descripcion }}{% if item.obligatorio %} <span style="color:#C0392B;">*</span>{% endif %}
+    </div>
+    {% if item.tipo_respuesta == 'boolean' %}
+      <div style="display:flex; gap:14px;">
+        <label style="font-size:13px;"><input type="radio" name="check_{{ item.item_id }}" value="ok"> ✓ OK</label>
+        <label style="font-size:13px;"><input type="radio" name="check_{{ item.item_id }}" value="falla"> ✗ Falla</label>
+      </div>
+    {% elif item.tipo_respuesta == 'numero' %}
+      <input type="number" step="0.01" name="check_{{ item.item_id }}" style="padding:7px; border:1px solid #DCE7E7; border-radius:6px; width:160px;">
+    {% else %}
+      <input type="text" name="check_{{ item.item_id }}" style="padding:7px; border:1px solid #DCE7E7; border-radius:6px; width:100%;">
+    {% endif %}
+    <input type="text" name="comentario_{{ item.item_id }}" placeholder="Observación (opcional)" style="margin-top:6px; padding:6px; border:1px solid #DCE7E7; border-radius:6px; width:100%; font-size:12px;">
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Repuestos usados (opcional)</h2>
+  <p class="muted" style="font-size:12px; margin-bottom:12px;">
+    Si registras repuestos, se descuentan del stock automáticamente y
+    de forma atómica junto con el cierre de la OT (si algo falla, no
+    queda ni la OT finalizada ni el stock descontado a medias).
+  </p>
+
+  {% for i in range(3) %}
+  <div style="display:flex; gap:10px; margin-bottom:10px;">
+    <select name="repuesto_codigo" style="flex:2; padding:9px; border:1px solid #DCE7E7; border-radius:8px;">
+      <option value="">— Sin repuesto —</option>
+      {% for r in almacen %}
+      <option value="{{ r.codigo_repuesto }}">{{ r.nombre }} (stock: {{ r.stock_actual }})</option>
+      {% endfor %}
+    </select>
+    <input type="number" name="repuesto_cantidad" min="1" placeholder="Cant." style="flex:1; padding:9px; border:1px solid #DCE7E7; border-radius:8px;">
+  </div>
+  {% endfor %}
+
+  <label class="muted" style="font-size:12px; font-weight:700;">COMENTARIO GENERAL (opcional)</label>
+  <textarea name="comentario" rows="2" style="width:100%; padding:9px; margin:5px 0 20px; border:1px solid #DCE7E7; border-radius:8px; font-family:inherit;"></textarea>
+
+  <button type="submit" class="btn" style="border:none; cursor:pointer; font-size:14px;">Finalizar OT</button>
+  <a href="/kanban" class="muted" style="margin-left:12px; font-size:13px;">Cancelar</a>
+</div>
+</form>
+
+{% endblock %}

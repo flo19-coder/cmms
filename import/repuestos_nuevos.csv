@@ -1,0 +1,6 @@
+codigo,nombre,almacen,stock_actual,stock_minimo,costo_unitario
+REP-AQP-001,Correa de transmisión C150D5,Almacen_Arequipa,8,3,145.50
+REP-AQP-002,Filtro de aire industrial Carrier,Almacen_Arequipa,15,5,62.00
+REP-AQP-003,Kit de sellos Becker VT4.40,Almacen_Arequipa,4,2,210.75
+REP-AQP-004,Contactor principal Schneider,Almacen_Arequipa,6,2,98.30
+REP-AQP-005,Batería UPS APC Symmetra,Almacen_Arequipa,2,4,540.00

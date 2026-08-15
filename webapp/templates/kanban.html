@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Kanban — Órdenes de Trabajo{% endblock %}
+{% block content %}
+
+<style>
+  .kanban-col { min-width: 270px; flex: 1; }
+  .kanban-col-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .kanban-col-header .titulo { font-weight: 700; font-size: 13px; flex: 1; }
+  .kanban-card { padding: 12px; margin-bottom: 8px; }
+  .kanban-card-top { display: flex; align-items: center; gap: 8px; }
+  .kanban-card-nombre { font-weight: 700; font-size: 12.5px; }
+  .kanban-card-fecha { font-size: 11px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+  .kanban-card-titulo-eq { font-size: 12.5px; margin: 6px 0 2px; }
+  .kanban-card-actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .tarea-card-check { display: flex; gap: 8px; align-items: flex-start; }
+  .tarea-card-check input { margin-top: 3px; }
+</style>
+
+<div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+  <div>
+    <div class="muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.03em;">Tareas</div>
+    <h1 style="margin-top:2px;">Órdenes de Trabajo</h1>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <div class="view-switcher">
+      <a href="/kanban" class="active" title="Kanban">▦</a>
+      <a href="/calendario" title="Calendario">📅</a>
+      <a href="/tareas" title="Lista">☰</a>
+    </div>
+    <button class="icon-btn" onclick="location.reload()" title="Actualizar">↻</button>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="card" style="padding:10px 14px; {% if category=='error' %}background:#FDECEA; color:#C0392B;{% else %}background:#E8F0FE; color:#1D6FE0;{% endif %} font-size:13px;">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:10px;">
+
+  <div class="kanban-col">
+    <div class="card kanban-col-header">
+      <span style="color:var(--warn);">⏱</span>
+      <span class="titulo">Tareas Pendientes ({{ tareas_pendientes|length }})</span>
+      <button class="icon-btn" onclick="location.reload()" title="Actualizar">↻</button>
+    </div>
+    {% for t in tareas_pendientes %}
+    <div class="card kanban-card">
+      <form method="post" action="/tareas/{{ t.tarea_id }}/finalizar" class="tarea-card-check">
+        <input type="checkbox" onchange="this.form.submit()" title="Marcar como finalizada">
+        <div style="flex:1;">
+          <div class="kanban-card-nombre">{{ t.nombre_tarea }}</div>
+          <div class="muted" style="font-size:11px; margin-top:3px;">📅 {{ t.fecha_programada or "—" }}{% if t.frecuencia %} · {{ t.frecuencia }}{% endif %}</div>
+          {% if t.nombre_activo %}<div style="font-size:11px; font-weight:700; margin-top:4px; text-transform:uppercase;">{{ t.nombre_activo }}</div>{% endif %}
+          <div class="muted" style="font-size:10.5px;">{{ t.nivel_2_sede }} {% if t.nivel_3_servicio %}/ {{ t.nivel_3_servicio }}{% endif %}</div>
+          {% if t.criticidad %}
+          <div style="margin-top:6px; font-size:11px; display:flex; align-items:center; gap:5px;">
+            <span class="estado-dot {% if t.criticidad in ['Muy Alta','Alta'] %}dot-cancelada{% else %}dot-pendiente{% endif %}" style="{% if t.criticidad in ['Muy Alta','Alta'] %}background:#C0392B;{% endif %}"></span>
+            {{ t.criticidad }}
+          </div>
+          {% endif %}
+        </div>
+      </form>
+      <div class="code-badge">{{ t.tarea_id }}</div>
+    </div>
+    {% else %}
+    <p class="muted" style="text-align:center; font-size:12px;">Sin tareas pendientes</p>
+    {% endfor %}
+  </div>
+
+  {% for estado, ots in columnas.items() %}
+  <div class="kanban-col">
+    <div class="card kanban-col-header">
+      {% if estado == 'Pendiente' %}<span style="color:var(--warn);">⏱</span>
+      {% elif estado == 'En Proceso' %}<span style="color:var(--teal);">📈</span>
+      {% elif estado == 'En Revisión' %}<span style="color:var(--muted);">📋</span>
+      {% else %}<span style="color:#0E7C4A;">✅</span>{% endif %}
+      <span class="titulo">OTs {{ estado }} ({{ ots|length }})</span>
+      <button class="icon-btn" onclick="location.reload()" title="Actualizar">↻</button>
+    </div>
+    {% for o in ots %}
+    <div class="card kanban-card">
+      <a href="/activo/{{ o.activo_codigo }}" style="text-decoration:none; color:inherit;">
+        <div class="kanban-card-top">
+          <div class="avatar-circle">{{ (o.responsable_nombre or "?")[:2]|upper }}</div>
+          <div class="kanban-card-nombre">{{ o.responsable_nombre or "Sin asignar" }}</div>
+          <div class="kanban-card-fecha">{{ o.fecha_programada }}</div>
+        </div>
+        <div class="kanban-card-titulo-eq"><strong>{{ o.nombre_activo }}</strong></div>
+        <div class="muted" style="font-size:11px;">{{ o.descripcion_tarea }}</div>
+        <div class="muted" style="font-size:10.5px; margin-top:2px;">{{ o.nivel_2_sede }} · {{ o.nivel_3_servicio }}</div>
+        <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+          {% if o.prioridad == 'Muy Alta' %}<span class="badge badge-alert">{{ o.prioridad }}</span>
+          {% elif o.prioridad == 'Alta' %}<span class="badge badge-atencion">{{ o.prioridad }}</span>
+          {% else %}<span class="badge badge-info">{{ o.prioridad }}</span>{% endif %}
+          <span class="muted" style="font-size:11px;">{{ o.porcentaje_avance }}%</span>
+        </div>
+        <div class="progress-bar-track"><div class="progress-bar-fill" style="width:{{ o.porcentaje_avance }}%;"></div></div>
+      </a>
+
+      <div class="kanban-card-actions">
+        {% if estado == 'Pendiente' %}
+          <form method="post" action="/ot/{{ o.ot_id }}/avanzar" style="margin:0;">
+            <input type="hidden" name="nuevo_estado" value="En Proceso">
+            <input type="hidden" name="volver_a" value="/kanban">
+            <button type="submit" style="font-size:11px; padding:5px 9px; border:none; border-radius:6px; background:var(--seafoam); color:white; cursor:pointer;">▶ Iniciar</button>
+          </form>
+        {% elif estado == 'En Proceso' %}
+          <form method="post" action="/ot/{{ o.ot_id }}/avanzar" style="margin:0;">
+            <input type="hidden" name="nuevo_estado" value="En Revisión">
+            <input type="hidden" name="volver_a" value="/kanban">
+            <button type="submit" style="font-size:11px; padding:5px 9px; border:none; border-radius:6px; background:var(--seafoam); color:white; cursor:pointer;">→ Enviar a revisión</button>
+          </form>
+        {% elif estado == 'En Revisión' %}
+          <a href="/ot/{{ o.ot_id }}/finalizar" style="font-size:11px; padding:5px 9px; border-radius:6px; background:var(--teal); color:white; cursor:pointer; text-decoration:none;">✓ Finalizar</a>
+          <form method="post" action="/ot/{{ o.ot_id }}/avanzar" style="margin:0;">
+            <input type="hidden" name="nuevo_estado" value="En Proceso">
+            <input type="hidden" name="volver_a" value="/kanban">
+            <button type="submit" style="font-size:11px; padding:5px 9px; border:1px solid #DCE7E7; border-radius:6px; background:white; color:var(--muted); cursor:pointer;">↩ Rechazar</button>
+          </form>
+        {% endif %}
+        <a href="/ot/{{ o.ot_id }}/historial" style="font-size:11px; padding:5px 9px; color:var(--muted); text-decoration:none;">Historial</a>
+      </div>
+      <div class="code-badge">{{ o.ot_id }}</div>
+    </div>
+    {% else %}
+    <p class="muted" style="text-align:center; font-size:12px;">Sin OTs</p>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<a href="/ot/nueva" class="fab" title="Nueva OT">+</a>
+
+{% endblock %}

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CMMS Infraestructura{% endblock %}</title>
+  <style>
+    :root {
+      /* Paleta estilo Fracttal One (azul primario de la barra superior y
+         acentos, gris muy claro de fondo) — ver docs/ARQUITECTURA_ETL.md
+         y las capturas del manual usadas como referencia de diseño. */
+      --teal-dark: #1D6FE0; --teal: #2D7FF9; --seafoam: #5B9BFF; --mint: #8FC1FF;
+      --ink: #1F2937; --white: #FFFFFF; --offwhite: #F4F6FA; --muted: #6B7785;
+      --danger: #C0392B; --warn: #D68910;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, "Segoe UI", Calibri, Arial, sans-serif; background: var(--offwhite); color: var(--ink); }
+    header { background: var(--teal-dark); color: white; padding: 0 20px; height: 56px; display: flex; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.15); position: sticky; top: 0; z-index: 500; }
+    header a { color: white; text-decoration: none; }
+    .header-inner { max-width: 1200px; margin: 0 auto; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
+    .brand-mark { width: 26px; height: 26px; flex-shrink: 0; }
+    .hamburger-btn { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 20px; line-height: 1; user-select: none; }
+    .hamburger-btn:hover { background: rgba(255,255,255,.15); }
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .badge-apto { background: #E3F6EE; color: #0E7C4A; }
+    .badge-atencion { background: #FFF3E0; color: var(--warn); }
+    .badge-alert { background: #FDECEA; color: var(--danger); }
+    .badge-info { background: #E8F0FE; color: var(--teal); }
+    .kpi { display: flex; gap: 10px; flex-wrap: wrap; }
+    .kpi div { flex: 1; min-width: 110px; background: var(--offwhite); border-radius: 10px; padding: 12px; text-align: center; }
+    .kpi .num { font-size: 24px; font-weight: 800; color: var(--teal); }
+    .kpi .lbl { font-size: 11px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #E9EEF5; }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+    tbody tr:hover { background: var(--offwhite); }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 15px; color: var(--muted); margin: 0 0 10px; text-transform: uppercase; letter-spacing: .03em; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #E9EEF5; font-size: 14px; }
+    .row:last-child { border-bottom: none; }
+    a.btn, button.btn { display: inline-block; background: var(--teal); color: white; padding: 8px 14px; border-radius: 8px; text-decoration: none; font-size: 13px; border: none; cursor: pointer; font-family: inherit; }
+    button.btn:disabled { background: #A9C4C4; cursor: not-allowed; }
+    .btn-outline { display: inline-block; background: white; color: var(--teal); padding: 7px 13px; border-radius: 8px; text-decoration: none; font-size: 13px; border: 1px solid var(--teal); cursor: pointer; font-family: inherit; }
+    .btn-danger { display: inline-block; background: var(--danger); color: white; padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 12px; border: none; cursor: pointer; font-family: inherit; }
+
+    /* Botón flotante (FAB) — el "+" azul circular abajo a la derecha que
+       aparece en casi todas las vistas de listado de Fracttal. */
+    .fab { position: fixed; right: 24px; bottom: 24px; width: 52px; height: 52px; border-radius: 50%; background: var(--teal); color: white; display: flex; align-items: center; justify-content: center; font-size: 26px; text-decoration: none; box-shadow: 0 4px 14px rgba(45,127,249,.45); border: none; cursor: pointer; z-index: 400; }
+    .fab:hover { background: var(--teal-dark); }
+
+    /* Menú lateral deslizable (hamburguesa) — patrón de Fracttal: el
+       botón ☰ de la barra superior abre un panel lateral con el menú
+       principal en vez de una barra horizontal de links. */
+    #nav-toggle { display: none; }
+    .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.35); z-index: 600; }
+    .drawer { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: white; z-index: 601; transition: left .18s ease; box-shadow: 2px 0 16px rgba(0,0,0,.18); display: flex; flex-direction: column; }
+    #nav-toggle:checked ~ .drawer-overlay { display: block; }
+    #nav-toggle:checked ~ .drawer { left: 0; }
+    .drawer-header { padding: 16px; background: var(--teal-dark); color: white; display: flex; align-items: center; gap: 10px; }
+    .drawer-user { padding: 12px 16px; border-bottom: 1px solid #E9EEF5; font-size: 12px; color: var(--muted); }
+    .drawer-nav { flex: 1; overflow-y: auto; padding: 8px; }
+    .drawer-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; color: var(--ink); text-decoration: none; font-size: 14px; }
+    .drawer-nav a:hover { background: var(--offwhite); }
+    .drawer-nav a.active { background: #E8F0FE; color: var(--teal); font-weight: 700; }
+    .drawer-close { margin-left: auto; cursor: pointer; font-size: 20px; color: white; }
+    .drawer-footer { padding: 12px 16px; border-top: 1px solid #E9EEF5; }
+
+    /* Breadcrumb de ubicación (estilo Fracttal) */
+    .breadcrumb { font-size: 12px; color: var(--muted); background: var(--offwhite); border: 1px solid #E4EDED; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; overflow-x: auto; white-space: nowrap; }
+    .breadcrumb .back-link { color: var(--teal); text-decoration: none; font-weight: 700; margin-right: 10px; }
+
+    /* Ficha con pestañas laterales */
+    .ficha-layout { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .ficha-sidebar { flex: 0 0 220px; min-width: 200px; }
+    .ficha-main { flex: 1; min-width: 280px; }
+    .tabs-nav { display: flex; flex-direction: column; gap: 2px; }
+    .tabs-nav button { text-align: left; background: none; border: none; padding: 10px 12px; border-radius: 8px; font-size: 13px; color: var(--ink); cursor: pointer; font-family: inherit; }
+    .tabs-nav button:hover { background: var(--offwhite); }
+    .tabs-nav button.active { background: var(--teal); color: white; font-weight: 600; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Grid de campos editables, estilo "boxed field" de Fracttal */
+    .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .field-box { display: flex; flex-direction: column; gap: 4px; }
+    .field-box label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; font-weight: 600; }
+    .field-box input[type=text], .field-box input[type=number], .field-box input[type=date], .field-box select, .field-box textarea {
+      border: 1px solid #E4EDED; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: white; color: var(--ink);
+    }
+    .field-box input:disabled, .field-box select:disabled, .field-box textarea:disabled { background: var(--offwhite); color: var(--ink); opacity: .85; }
+    .field-box.checkbox-row { flex-direction: row; align-items: center; gap: 8px; }
+    .field-box.checkbox-row label { text-transform: none; font-size: 13px; font-weight: 400; }
+    .form-actions { margin-top: 16px; display: flex; gap: 10px; }
+    .upload-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed #E4EDED; }
+    .upload-form .field-box { min-width: 140px; flex: 1; }
+
+    /* Selector de vistas (Kanban / Calendario / Lista) — icon-tabs
+       reutilizados en /kanban, /calendario y /tareas, igual que en
+       Fracttal (los 3 iconos arriba a la izquierda de "Tareas"). */
+    .view-switcher { display: flex; gap: 2px; background: var(--offwhite); border-radius: 8px; padding: 3px; }
+    .view-switcher a { display: flex; align-items: center; justify-content: center; width: 32px; height: 28px; border-radius: 6px; text-decoration: none; color: var(--muted); font-size: 14px; }
+    .view-switcher a.active { background: var(--teal); color: white; }
+    .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #E4EDED; background: white; color: var(--muted); cursor: pointer; font-size: 14px; }
+    .icon-btn:hover { background: var(--offwhite); }
+
+    /* Avatar circular con iniciales — estilo Fracttal para tarjetas de OT */
+    .avatar-circle { width: 26px; height: 26px; border-radius: 50%; background: var(--teal); color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+
+    /* Barra de progreso delgada (% de avance de una OT) */
+    .progress-bar-track { background: #E9EEF5; border-radius: 999px; height: 5px; overflow: hidden; margin-top: 6px; }
+    .progress-bar-fill { background: var(--teal); height: 100%; border-radius: 999px; }
+
+    /* Badge gris con el código de la OT/Tarea, esquina inferior de la tarjeta */
+    .code-badge { display: inline-block; background: var(--offwhite); color: var(--muted); font-size: 10px; padding: 2px 8px; border-radius: 5px; margin-top: 8px; }
+
+    /* Puntos de color de estado (calendario) */
+    .estado-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot-pendiente { background: var(--warn); }
+    .dot-enproceso, .dot-enrevision { background: var(--teal); }
+    .dot-finalizada { background: #0E7C4A; }
+    .dot-cancelada { background: #9AA5B1; }
+  </style>
+</head>
+<body>
+  <input type="checkbox" id="nav-toggle">
+  <label for="nav-toggle" class="drawer-overlay"></label>
+  <nav class="drawer">
+    <div class="drawer-header">
+      <svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="8" cy="6" r="3.2" fill="#FF6B9D"/>
+        <circle cx="16" cy="6" r="3.2" fill="#7B61FF"/>
+        <circle cx="6" cy="14" r="3.2" fill="#FFB020"/>
+        <circle cx="14" cy="15" r="3.6" fill="#2D7FF9"/>
+      </svg>
+      <strong>Menú principal</strong>
+      <label for="nav-toggle" class="drawer-close">✕</label>
+    </div>
+    {% if current_user.is_authenticated %}
+    <div class="drawer-user">{{ current_user.nombre_completo }} · {{ current_user.rol }}</div>
+    {% endif %}
+    <div class="drawer-nav">
+      <a href="/dashboard">📊 Dashboard</a>
+      <a href="/vista-arbol">🌳 Vista Árbol</a>
+      <a href="/activos">🏭 Activos</a>
+      <a href="/kanban">🗂️ Órdenes de Trabajo</a>
+      <a href="/tareas">🛠️ Tareas</a>
+      <a href="/calendario">📆 Calendario</a>
+      <a href="/gantt">📈 Gantt</a>
+      <a href="/panel/hoy">📅 Panel del día</a>
+      {% if current_user.is_authenticated %}
+        {% if current_user.rol == 'ADMIN' %}
+        <a href="/admin/usuarios">👤 Usuarios</a>
+        {% endif %}
+        {% if current_user.rol in ['ADMIN', 'SUPERVISOR'] %}
+        <a href="/auditoria">🧾 Auditoría</a>
+        <a href="/automatizador">⚡ Automatizador</a>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="drawer-footer">
+      {% if current_user.is_authenticated %}
+        <a href="/logout" class="btn-outline" style="display:block; text-align:center;">Cerrar sesión</a>
+      {% else %}
+        <a href="/login" class="btn" style="display:block; text-align:center;">Iniciar sesión</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <label for="nav-toggle" class="hamburger-btn">☰</label>
+        <svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="8" cy="6" r="3.2" fill="#FF6B9D"/>
+          <circle cx="16" cy="6" r="3.2" fill="#7B61FF"/>
+          <circle cx="6" cy="14" r="3.2" fill="#FFB020"/>
+          <circle cx="14" cy="15" r="3.6" fill="white"/>
+        </svg>
+        <a href="/dashboard">CMMS Infraestructura Clínica</a>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        {% if current_user.is_authenticated %}
+          <span style="color:white; font-size:12px; background:rgba(255,255,255,.18); padding:5px 12px; border-radius:999px;">
+            {{ current_user.nombre_completo }} · {{ current_user.rol }}
+          </span>
+        {% else %}
+          <a href="/login" style="color:white; text-decoration:none; font-size:13px; background:rgba(255,255,255,.2); padding:6px 14px; border-radius:6px;">Iniciar sesión</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+  <main style="max-width:1100px;">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

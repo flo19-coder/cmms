@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Gantt{% endblock %}
+{% block content %}
+
+<style>
+  .gantt-toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  .gantt-nav { display:flex; align-items:center; gap:10px; }
+  .gantt-nav button { border:1px solid #DCE7E7; background:white; border-radius:8px; height:30px; cursor:pointer; font-size:13px; padding:0 10px; }
+  .gantt-rango { font-weight:700; min-width:180px; text-align:center; font-size:13px; }
+  .gantt-wrap { display:flex; border:1px solid #E9EEF5; border-radius:10px; overflow:hidden; background:white; }
+  .gantt-labels { flex:0 0 220px; border-right:1px solid #E9EEF5; }
+  .gantt-labels .gantt-label-header { height:44px; display:flex; align-items:center; padding:0 12px; font-size:11px; text-transform:uppercase; color:var(--muted); font-weight:700; background:var(--offwhite); border-bottom:1px solid #E9EEF5; }
+  .gantt-label-row { height:34px; display:flex; align-items:center; padding:0 12px; font-size:12px; border-bottom:1px solid #F0F3F8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gantt-scroll { flex:1; overflow-x:auto; position:relative; }
+  .gantt-header-row { display:flex; height:44px; background:var(--offwhite); border-bottom:1px solid #E9EEF5; position:sticky; top:0; }
+  .gantt-day-col { flex:0 0 var(--day-w); text-align:center; font-size:10.5px; color:var(--muted); display:flex; flex-direction:column; align-items:center; justify-content:center; border-right:1px solid #F0F3F8; }
+  .gantt-day-col.hoy { background:#E8F0FE; color:var(--teal); font-weight:700; }
+  .gantt-body { position:relative; }
+  .gantt-row-bg { display:flex; height:34px; border-bottom:1px solid #F0F3F8; }
+  .gantt-row-bg .gantt-day-col { border-right:1px solid #F5F7FA; }
+  .gantt-row-bg .gantt-day-col.hoy { background:#F3F8FF; }
+  .gantt-bar { position:absolute; height:22px; border-radius:6px; color:white; font-size:10.5px; display:flex; align-items:center; padding:0 8px; overflow:hidden; white-space:nowrap; cursor:grab; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  .gantt-bar:active { cursor:grabbing; }
+  .evento-ot-pendiente, .evento-tarea-pendiente { background:var(--warn); }
+  .evento-ot-enproceso, .evento-ot-enrevision { background:var(--teal); }
+  .evento-ot-finalizada, .evento-tarea-finalizada { background:#0E7C4A; }
+  .evento-ot-cancelada { background:#9AA5B1; }
+</style>
+
+<div class="card">
+  <h1>Gantt</h1>
+  <div class="muted">Tareas y Órdenes de Trabajo en línea de tiempo — arrastra una barra horizontalmente para reprogramarla</div>
+</div>
+
+<div class="card">
+  <div class="gantt-toolbar">
+    <div class="muted" style="font-size:12px;">La duración de cada barra es estimada (ver nota en <code>queries.py</code>) — no es una fecha de término real, salvo para OTs finalizadas.</div>
+    <div class="gantt-nav">
+      <button id="gantt-prev" type="button">← 2 semanas</button>
+      <div class="gantt-rango" id="gantt-rango"></div>
+      <button id="gantt-next" type="button">2 semanas →</button>
+      <button id="gantt-hoy" type="button">Hoy</button>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="padding:0;">
+  <div class="gantt-wrap">
+    <div class="gantt-labels" id="gantt-labels"></div>
+    <div class="gantt-scroll" id="gantt-scroll">
+      <div class="gantt-header-row" id="gantt-header-row"></div>
+      <div class="gantt-body" id="gantt-body"></div>
+    </div>
+  </div>
+</div>
+
+<a href="/calendario" class="btn-outline" style="display:inline-block; margin-bottom:20px;">Ver como Calendario →</a>
+
+<script>
+(function () {
+  const DAY_W = 36; // px por día — también referenciado en CSS via --day-w
+  const DIAS_VISIBLES = 30;
+  document.documentElement.style.setProperty('--day-w', DAY_W + 'px');
+
+  let inicioRango = new Date();
+  inicioRango.setDate(inicioRango.getDate() - 5);
+  inicioRango.setHours(0, 0, 0, 0);
+
+  function fmt(d) { return d.toISOString().slice(0, 10); }
+  function diffDias(a, b) { return Math.round((b - a) / 86400000); }
+
+  function claseEvento(ev) {
+    if (ev.tipo === 'tarea') return ev.estado === 'Finalizada' ? 'evento-tarea-finalizada' : 'evento-tarea-pendiente';
+    const e = (ev.estado || '').toLowerCase();
+    if (e === 'finalizada') return 'evento-ot-finalizada';
+    if (e === 'cancelada') return 'evento-ot-cancelada';
+    if (e === 'en proceso') return 'evento-ot-enproceso';
+    if (e === 'en revisión' || e === 'en revision') return 'evento-ot-enrevision';
+    return 'evento-ot-pendiente';
+  }
+
+  function rangoFin() {
+    const f = new Date(inicioRango);
+    f.setDate(f.getDate() + DIAS_VISIBLES - 1);
+    return f;
+  }
+
+  function renderHeader() {
+    const header = document.getElementById('gantt-header-row');
+    header.innerHTML = '';
+    const hoyStr = fmt(new Date());
+    for (let i = 0; i < DIAS_VISIBLES; i++) {
+      const d = new Date(inicioRango);
+      d.setDate(d.getDate() + i);
+      const col = document.createElement('div');
+      col.className = 'gantt-day-col' + (fmt(d) === hoyStr ? ' hoy' : '');
+      col.innerHTML = `<div>${d.toLocaleDateString('es', { weekday: 'short' })}</div><div>${d.getDate()}/${d.getMonth() + 1}</div>`;
+      header.appendChild(col);
+    }
+    header.style.width = (DAY_W * DIAS_VISIBLES) + 'px';
+  }
+
+  function renderRowBackground() {
+    const hoyStr = fmt(new Date());
+    const row = document.createElement('div');
+    row.className = 'gantt-row-bg';
+    row.style.width = (DAY_W * DIAS_VISIBLES) + 'px';
+    for (let i = 0; i < DIAS_VISIBLES; i++) {
+      const d = new Date(inicioRango);
+      d.setDate(d.getDate() + i);
+      const col = document.createElement('div');
+      col.className = 'gantt-day-col' + (fmt(d) === hoyStr ? ' hoy' : '');
+      row.appendChild(col);
+    }
+    return row;
+  }
+
+  function cargarEventos() {
+    const fin = rangoFin();
+    document.getElementById('gantt-rango').textContent =
+      `${inicioRango.toLocaleDateString('es')} — ${fin.toLocaleDateString('es')}`;
+    fetch(`/calendario/eventos.json?desde=${fmt(inicioRango)}&hasta=${fmt(fin)}`)
+      .then(r => r.json())
+      .then(eventos => {
+        eventos.sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio));
+        render(eventos || []);
+      });
+  }
+
+  function render(eventos) {
+    renderHeader();
+    const labels = document.getElementById('gantt-labels');
+    const body = document.getElementById('gantt-body');
+    labels.innerHTML = '<div class="gantt-label-header">Tarea / OT</div>';
+    body.innerHTML = '';
+    body.style.width = (DAY_W * DIAS_VISIBLES) + 'px';
+
+    if (!eventos.length) {
+      const vacio = document.createElement('div');
+      vacio.className = 'muted';
+      vacio.style.padding = '14px';
+      vacio.textContent = 'Sin tareas ni OTs en este rango de fechas.';
+      body.appendChild(vacio);
+      return;
+    }
+
+    eventos.forEach((ev, idx) => {
+      const label = document.createElement('div');
+      label.className = 'gantt-label-row';
+      label.title = ev.titulo;
+      label.textContent = ev.titulo;
+      labels.appendChild(label);
+
+      const rowBg = renderRowBackground();
+      rowBg.style.top = (idx * 34) + 'px';
+      body.appendChild(rowBg);
+    });
+    body.style.height = (eventos.length * 34) + 'px';
+
+    eventos.forEach((ev, idx) => {
+      const inicio = new Date(ev.fecha_inicio + 'T00:00:00');
+      const fin = new Date(ev.fecha_fin + 'T00:00:00');
+      const offsetDias = diffDias(inicioRango, inicio);
+      const duracionDias = Math.max(1, diffDias(inicio, fin));
+
+      const bar = document.createElement('div');
+      bar.className = 'gantt-bar ' + claseEvento(ev);
+      bar.textContent = ev.titulo;
+      bar.title = `${ev.titulo} — ${ev.nombre_activo || 'sin activo'} — ${ev.estado || ''}`;
+      bar.style.top = (idx * 34 + 6) + 'px';
+      bar.style.left = (offsetDias * DAY_W) + 'px';
+      bar.style.width = (duracionDias * DAY_W - 4) + 'px';
+      bar.dataset.tipo = ev.tipo;
+      bar.dataset.id = ev.id;
+      bar.dataset.fechaInicio = ev.fecha_inicio;
+      bar.style.position = 'absolute';
+
+      let arrastrando = false, startX = 0, startLeft = 0;
+      bar.addEventListener('pointerdown', e => {
+        arrastrando = true; startX = e.clientX; startLeft = parseFloat(bar.style.left);
+        bar.setPointerCapture(e.pointerId);
+      });
+      bar.addEventListener('pointermove', e => {
+        if (!arrastrando) return;
+        const deltaX = e.clientX - startX;
+        const deltaDiasRaw = deltaX / DAY_W;
+        const deltaDias = Math.round(deltaDiasRaw);
+        bar.style.left = (startLeft + deltaDias * DAY_W) + 'px';
+      });
+      bar.addEventListener('pointerup', e => {
+        if (!arrastrando) return;
+        arrastrando = false;
+        const deltaX = e.clientX - startX;
+        const deltaDias = Math.round(deltaX / DAY_W);
+        if (deltaDias === 0) return;
+        const nuevaFecha = new Date(inicio);
+        nuevaFecha.setDate(nuevaFecha.getDate() + deltaDias);
+        fetch('/calendario/mover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo: bar.dataset.tipo, id: bar.dataset.id, nueva_fecha: fmt(nuevaFecha) }),
+        }).then(r => r.json()).then(resp => {
+          if (resp.error) { alert(resp.error); }
+          cargarEventos();
+        });
+      });
+
+      body.appendChild(bar);
+    });
+  }
+
+  document.getElementById('gantt-prev').addEventListener('click', () => {
+    inicioRango.setDate(inicioRango.getDate() - 14); cargarEventos();
+  });
+  document.getElementById('gantt-next').addEventListener('click', () => {
+    inicioRango.setDate(inicioRango.getDate() + 14); cargarEventos();
+  });
+  document.getElementById('gantt-hoy').addEventListener('click', () => {
+    inicioRango = new Date(); inicioRango.setDate(inicioRango.getDate() - 5); inicioRango.setHours(0, 0, 0, 0);
+    cargarEventos();
+  });
+
+  cargarEventos();
+})();
+</script>
+
+{% endblock %}

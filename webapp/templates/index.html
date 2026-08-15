@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Activos{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Activos</h1>
+  <div class="muted">{{ activos|length }} equipos — acceso directo sin escanear QR (para pruebas)</div>
+  <div style="margin-top:10px;"><a class="btn" href="/panel/hoy">Ver panel del día</a></div>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Sede / Servicio</th><th>Criticidad</th></tr>
+    {% for a in activos %}
+    <tr>
+      <td><a href="/activo/{{ a.codigo_activo }}">{{ a.codigo_activo }}</a></td>
+      <td>{{ a.nombre }}</td>
+      <td>{{ a.tipo_equipo }}</td>
+      <td>{{ a.nivel_2_sede }} / {{ a.nivel_3_servicio }}</td>
+      <td>{{ a.criticidad }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

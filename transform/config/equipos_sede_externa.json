@@ -1,0 +1,33 @@
+{
+  "module": "equipos_sede_externa",
+  "descripcion": "Migra equipos desde el ERP externo (MySQL, Sede Arequipa) hacia core.activo — usa SqlConnector en vez del cliente Fracttal.",
+  "target_table": "core.activo",
+  "conflict_key": "codigo_activo",
+  "mapping": {
+    "codigo_activo": {"var": "codigo"},
+    "nombre": {"trim": [{"var": "nombre"}]},
+    "fabricante": {"var": "fabricante"},
+    "modelo": {"var": "modelo"},
+    "tipo_equipo": {"var": "nombre"},
+    "criticidad": {"var": "criticidad"},
+    "ubicacion_path": {"var": "ubicacion"},
+    "nivel_2_sede": {"path_level": [{"var": "ubicacion"}, 1]},
+    "nivel_3_servicio": {"path_level": [{"var": "ubicacion"}, 2]},
+    "habilitado": true,
+    "fuera_de_servicio": false
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["codigo", "nombre"],
+    "properties": {
+      "codigo": {"type": "string"},
+      "nombre": {"type": "string"}
+    }
+  },
+  "event_rules": {
+    "equipo_critico_nuevo": {"==": [{"var": "criticidad"}, "Muy Alta"]}
+  },
+  "events": {
+    "equipo_critico_nuevo": {"action": "log"}
+  }
+}

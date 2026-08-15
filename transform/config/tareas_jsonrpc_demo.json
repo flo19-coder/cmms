@@ -1,0 +1,23 @@
+{
+  "module": "tareas_jsonrpc_demo",
+  "descripcion": "Tareas de un sistema externo de mantenimiento, recibidas vía JSON-RPC 2.0 (connectors/api_connector.py) — se cargan en core.tarea igual que las tareas del pipeline Fracttal/demo.",
+  "target_table": "core.tarea",
+  "conflict_key": "tarea_id",
+  "mapping": {
+    "tarea_id": {"var": "id"},
+    "activo_codigo": {"var": "activo_codigo"},
+    "nombre_tarea": {"var": "nombre"},
+    "planificada": true,
+    "frecuencia": {"var": "frecuencia"},
+    "fecha_programada": {"parse_date": [{"var": "fecha_programada"}]},
+    "estado": {"var": "estado"}
+  },
+  "validation_schema": {
+    "type": "object",
+    "required": ["id", "nombre"],
+    "properties": {
+      "id": {"type": "string"},
+      "nombre": {"type": "string"}
+    }
+  }
+}

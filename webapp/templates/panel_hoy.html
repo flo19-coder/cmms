@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Panel del día — {{ hoy }}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Actividades de hoy</h1>
+  <div class="muted">{{ hoy }} · {{ ots_hoy|length }} órdenes de trabajo · {{ tareas_hoy|length }} tareas programadas</div>
+</div>
+
+<div class="card">
+  <h2>Órdenes de trabajo — hoy</h2>
+  {% if ots_hoy %}
+    {% for o in ots_hoy %}
+    <div class="row">
+      <div>
+        <strong>{{ o.ot_id }}</strong> — {{ o.descripcion_tarea }}<br>
+        <span class="muted">{{ o.nombre_activo }} · {{ o.nivel_2_sede }} / {{ o.nivel_3_servicio }}</span><br>
+        <span class="muted">👤 {{ o.responsable_nombre }}</span>
+      </div>
+      <div style="text-align:right;">
+        {% if o.prioridad == 'Muy Alta' %}<span class="badge badge-alert">{{ o.prioridad }}</span>
+        {% elif o.prioridad == 'Alta' %}<span class="badge badge-atencion">{{ o.prioridad }}</span>
+        {% else %}<span class="badge badge-info">{{ o.prioridad }}</span>{% endif %}<br>
+        <span class="muted">{{ o.estado }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Sin órdenes de trabajo programadas para hoy.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Tareas / inspecciones — hoy</h2>
+  {% if tareas_hoy %}
+    {% for t in tareas_hoy %}
+    <div class="row">
+      <div>
+        <strong>{{ t.nombre_tarea }}</strong><br>
+        <span class="muted">{{ t.nombre_activo }} · {{ t.nivel_2_sede }} / {{ t.nivel_3_servicio }}</span>
+      </div>
+      <div style="text-align:right;">
+        <span class="badge badge-info">{{ t.frecuencia }}</span><br>
+        <span class="muted">{{ t.estado }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Sin tareas programadas para hoy.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

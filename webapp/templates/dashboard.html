@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>Dashboard</h1>
+  <div class="muted">Panel general de infraestructura crítica — Clínica Internacional</div>
+</div>
+
+<div class="kpi" style="margin-bottom:14px;">
+  <div class="card" style="flex:1; min-width:130px;">
+    <div class="num" style="font-size:30px;">{{ kpi.ots_en_proceso or 0 }}</div>
+    <div class="lbl">OTs en Proceso</div>
+  </div>
+  <div class="card" style="flex:1; min-width:130px;">
+    <div class="num" style="font-size:30px;">{{ kpi.ots_en_revision or 0 }}</div>
+    <div class="lbl">OTs en Revisión</div>
+  </div>
+  <div class="card" style="flex:1; min-width:130px;">
+    <div class="num" style="font-size:30px;">{{ kpi.ots_finalizadas or 0 }}</div>
+    <div class="lbl">OTs Finalizadas</div>
+  </div>
+  <div class="card" style="flex:1; min-width:130px;">
+    <div class="num" style="font-size:30px; color:#C0392B;">{{ kpi.tareas_pendientes_con_atraso or 0 }}</div>
+    <div class="lbl">Con Atraso</div>
+  </div>
+  <div class="card" style="flex:1; min-width:130px;">
+    <div class="num" style="font-size:30px;">{{ kpi.porcentaje_cumplimiento or 0 }}%</div>
+    <div class="lbl">Cumplimiento</div>
+  </div>
+  <div class="card" style="flex:1; min-width:130px;">
+    <div class="num" style="font-size:30px;">{{ downtime_total }}</div>
+    <div class="lbl">Horas fuera de servicio</div>
+  </div>
+</div>
+
+<div style="display:flex; gap:14px; flex-wrap:wrap;">
+  <div class="card" style="flex:1; min-width:280px;">
+    <h2>Órdenes de trabajo por tipo</h2>
+    <canvas id="chartTipo" height="220"></canvas>
+  </div>
+  <div class="card" style="flex:1; min-width:280px;">
+    <h2>Activos por criticidad</h2>
+    <canvas id="chartCriticidad" height="220"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Activos por área técnica</h2>
+  <canvas id="chartServicio" height="140"></canvas>
+</div>
+
+<div style="display:flex; gap:14px; flex-wrap:wrap;">
+  <div class="card" style="flex:1; min-width:280px;">
+    <h2>⚠ Inspecciones vencidas</h2>
+    {% if inspecciones_vencidas %}
+      {% for i in inspecciones_vencidas %}
+      <div class="row">
+        <div><strong>{{ i.nombre }}</strong><br><span class="muted">{{ i.codigo_activo }} · {{ i.nivel_2_sede }} / {{ i.nivel_3_servicio }}</span></div>
+        <div class="muted">{{ i.proxima_calibracion }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted">Sin inspecciones vencidas.</p>
+    {% endif %}
+  </div>
+  <div class="card" style="flex:1; min-width:280px;">
+    <h2>⚠ Repuestos bajo stock mínimo</h2>
+    {% if stock_bajo %}
+      {% for s in stock_bajo %}
+      <div class="row">
+        <div><strong>{{ s.nombre }}</strong><br><span class="muted">{{ s.codigo_repuesto }}</span></div>
+        <div class="muted">{{ s.stock_actual }} / mín. {{ s.stock_minimo }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted">Sin alertas de stock.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='chart.umd.js') }}"></script>
+<script>
+  const teal = '#028090', seafoam = '#00A896', mint = '#02C39A', muted = '#5C7A7D';
+  const palette = [teal, seafoam, mint, '#015B66', '#7FCDBB', '#B2E4DD'];
+
+  new Chart(document.getElementById('chartTipo'), {
+    type: 'doughnut',
+    data: {
+      labels: {{ ots_por_tipo | map(attribute='tipo_ot') | list | tojson }},
+      datasets: [{ data: {{ ots_por_tipo | map(attribute='n') | list | tojson }}, backgroundColor: palette }]
+    },
+    options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+  });
+
+  new Chart(document.getElementById('chartCriticidad'), {
+    type: 'bar',
+    data: {
+      labels: {{ activos_por_criticidad | map(attribute='criticidad') | list | tojson }},
+      datasets: [{ data: {{ activos_por_criticidad | map(attribute='n') | list | tojson }}, backgroundColor: teal }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  new Chart(document.getElementById('chartServicio'), {
+    type: 'bar',
+    data: {
+      labels: {{ activos_por_servicio | map(attribute='nivel_3_servicio') | list | tojson }},
+      datasets: [{ data: {{ activos_por_servicio | map(attribute='n') | list | tojson }}, backgroundColor: seafoam }]
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+  });
+</script>
+
+{% endblock %}
