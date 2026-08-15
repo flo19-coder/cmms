@@ -64,6 +64,29 @@ nueva sin escribir código).
 La primera vez, `postgres_dw` ejecuta automáticamente todo lo que hay en
 `sql/schema/*.sql` (staging + core + mart) al inicializarse.
 
+## Migraciones de esquema (Alembic)
+
+Desde `ESPECIFICACION_CMMS_CODEX.md` (Fase 0), todo cambio de esquema
+**nuevo** se hace con una migración de Alembic — ya no se agregan
+archivos sueltos a `migrations/` (esa carpeta queda como referencia
+histórica de cómo se llegó al baseline `0001_baseline`).
+
+```bash
+# crear una migración nueva (edita upgrade()/downgrade() con op.execute() -- SQL crudo, sin ORM):
+python3 -m alembic revision -m "descripcion_corta"
+
+# aplicarla (local, con las variables CMMS_DW_* ya seteadas):
+python3 -m alembic upgrade head
+
+# ver en qué revisión está la base actual:
+python3 -m alembic current
+```
+
+`scripts/bootstrap_schema.py` (lo corre automáticamente tanto
+`docker-compose` local como `render.yaml`) aplica `sql/schema/*.sql` y
+además hace `alembic stamp head` — así que después de correrlo una vez
+más, cualquier base queda alineada sin ejecutar DDL dos veces.
+
 ## Cargar datos demo
 
 Los DAGs `cmms_activos`, `cmms_ordenes_trabajo`, `cmms_tareas` y

@@ -180,6 +180,7 @@ services:
     working_dir: /app
     command: >
       sh -c "pip install --no-cache-dir -r requirements.txt &&
+             python scripts/bootstrap_schema.py &&
              python scripts/seed_demo_users.py &&
              python app.py"
     environment:
@@ -196,9 +197,18 @@ services:
       CMMS_ENV: development
       CMMS_API_KEY: cmms-local-dev-key
       CMMS_SECRET_KEY: dev-secret-key-CHANGE-EN-PRODUCCION   # firma las cookies de sesión — CAMBIAR
+      # scripts/bootstrap_schema.py necesita sql/ + alembic/ + alembic.ini
+      # -- se montan en /repo_root (NO anidados dentro de /app) porque un
+      # bind mount de un solo archivo dentro de un directorio ya montado
+      # hace que Docker Desktop en Windows recree ese archivo vacío en el
+      # host en cada arranque.
+      CMMS_REPO_ROOT: /repo_root
     volumes:
       - ./webapp:/app
       - ./scripts:/app/scripts
+      - ./sql:/repo_root/sql
+      - ./alembic:/repo_root/alembic
+      - ./alembic.ini:/repo_root/alembic.ini
     ports:
       - "5090:5090"
     depends_on:
