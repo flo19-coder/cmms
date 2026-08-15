@@ -18,6 +18,7 @@
     <div>
       <h1>{{ activo.nombre }}</h1>
       <div class="muted">{{ activo.codigo_activo }} · {{ activo.fabricante }} {{ activo.modelo }}</div>
+      {% if can_edit %}<a href="/activo/{{ activo.codigo_activo }}/editar" class="btn-outline" style="display:inline-block; margin-top:8px; font-size:12px; padding:5px 10px;">✏️ Editar activo</a>{% endif %}
     </div>
     {% if ultimo_estado == "APTO" %}
       <span class="badge badge-apto">✓ APTO</span>

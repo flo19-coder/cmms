@@ -34,6 +34,12 @@ from transacciones import (
     get_checklist_para_activo, get_checklist_respuestas_ot,
     InvalidTransitionError, BusinessRuleError, TRANSICIONES_VALIDAS,
 )
+from activos_servicio import (
+    crear_activo, editar_activo, retirar_activo,
+    BusinessRuleError as ActivoBusinessRuleError,
+    ESTADOS_VALIDOS as ACTIVO_ESTADOS_VALIDOS,
+    CRITICIDADES_VALIDAS as ACTIVO_CRITICIDADES_VALIDAS,
+)
 from auditoria import registrar_evento, get_eventos, get_acciones_distintas
 from auth import login_manager, authenticate, role_required
 from api import api_bp
@@ -317,6 +323,75 @@ def index():
 
 
 # ---------------------------------------------------------------------
+# Activos -- creación, edición y retiro (Entrega 1, ESPECIFICACION_CMMS_CODEX_2.md)
+# Permisos: ADMIN y SUPERVISOR crean/editan; solo ADMIN retira.
+# TECNICO/OPERADOR solo consultan (ya cubierto por /activos y /activo/<codigo>).
+# ---------------------------------------------------------------------
+def _datos_formulario_activo() -> dict:
+    return {campo: request.form.get(campo) for campo in (
+        "codigo_activo", "nombre", "tipo_equipo", "fabricante", "modelo", "numero_serie",
+        "nivel_2_sede", "nivel_3_servicio", "ubicacion_path", "criticidad",
+        "horas_uso_promedio_diario", "plan_mantenimiento", "fecha_instalacion",
+        "estado", "notas",
+    )}
+
+
+@app.route("/activos/nuevo", methods=["GET", "POST"])
+@role_required("ADMIN", "SUPERVISOR")
+def activo_nuevo():
+    if request.method == "POST":
+        try:
+            codigo = crear_activo(_datos_formulario_activo(), usuario_id=int(current_user.id),
+                                   ip_address=request.remote_addr)
+            flash(f"Activo '{codigo}' creado correctamente.", "info")
+            return redirect(url_for("activo_detalle", codigo=codigo))
+        except ActivoBusinessRuleError as e:
+            flash(str(e), "error")
+            return render_template("activo_form.html", modo="nuevo", activo=request.form,
+                                    estados=ACTIVO_ESTADOS_VALIDOS, criticidades=ACTIVO_CRITICIDADES_VALIDAS)
+
+    return render_template("activo_form.html", modo="nuevo", activo={},
+                            estados=ACTIVO_ESTADOS_VALIDOS, criticidades=ACTIVO_CRITICIDADES_VALIDAS)
+
+
+@app.route("/activo/<codigo>/editar", methods=["GET", "POST"])
+@role_required("ADMIN", "SUPERVISOR")
+def activo_editar(codigo):
+    if request.method == "POST":
+        try:
+            editar_activo(codigo, _datos_formulario_activo(), usuario_id=int(current_user.id),
+                           ip_address=request.remote_addr)
+            flash(f"Activo '{codigo}' actualizado correctamente.", "info")
+            return redirect(url_for("activo_detalle", codigo=codigo))
+        except ActivoBusinessRuleError as e:
+            flash(str(e), "error")
+            datos = dict(request.form)
+            datos["codigo_activo"] = codigo
+            return render_template("activo_form.html", modo="editar", activo=datos,
+                                    estados=ACTIVO_ESTADOS_VALIDOS, criticidades=ACTIVO_CRITICIDADES_VALIDAS)
+
+    activo = query_one("SELECT * FROM core.activo WHERE codigo_activo = %s", (codigo,))
+    if not activo:
+        abort(404)
+    if activo.get("fecha_instalacion"):
+        activo["fecha_instalacion"] = activo["fecha_instalacion"].isoformat()
+    return render_template("activo_form.html", modo="editar", activo=activo,
+                            estados=ACTIVO_ESTADOS_VALIDOS, criticidades=ACTIVO_CRITICIDADES_VALIDAS)
+
+
+@app.route("/activo/<codigo>/retirar", methods=["POST"])
+@role_required("ADMIN")
+def activo_retirar(codigo):
+    try:
+        retirar_activo(codigo, motivo=request.form.get("motivo", ""), usuario_id=int(current_user.id),
+                        ip_address=request.remote_addr)
+        flash(f"Activo '{codigo}' retirado correctamente.", "info")
+    except ActivoBusinessRuleError as e:
+        flash(str(e), "error")
+    return redirect(url_for("activo_detalle", codigo=codigo))
+
+
+# ---------------------------------------------------------------------
 # Tareas — módulo "Planes de Tareas" del manual de Fracttal (pág. 116+),
 # simplificado: listado + creación manual de tareas de mantenimiento
 # (además de las que ya llegan por el pipeline ETL).
@@ -428,7 +503,7 @@ def activo_detalle(codigo):
     registrar_evento(usuario_id=uid, accion="VER_ACTIVO_QR", entidad_tipo="activo", entidad_id=codigo,
                       ip_address=request.remote_addr)
     checklist_referencia = get_checklist_para_activo(codigo)
-    can_edit = current_user.is_authenticated and current_user.tiene_rol("ADMIN", "SUPERVISOR", "TECNICO")
+    can_edit = current_user.is_authenticated and current_user.tiene_rol("ADMIN", "SUPERVISOR")
     return render_template("activo_detalle.html", **data, checklist_referencia=checklist_referencia, can_edit=can_edit)
 
 
@@ -455,7 +530,7 @@ def activo_qr(codigo):
 
 
 @app.route("/activo/<codigo>/foto", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_subir_foto(codigo):
     activo = query_one("SELECT codigo_activo FROM core.activo WHERE codigo_activo = %s", (codigo,))
     if not activo:
@@ -510,7 +585,7 @@ EXTENSIONES_ARCHIVO_PERMITIDAS = {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".do
 
 
 @app.route("/activo/<codigo>/actualizar", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_actualizar(codigo):
     activo = query_one("SELECT codigo_activo FROM core.activo WHERE codigo_activo = %s", (codigo,))
     if not activo:
@@ -545,7 +620,7 @@ def activo_actualizar(codigo):
 
 
 @app.route("/activo/<codigo>/formulario", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_formulario_personalizado(codigo):
     activo = query_one("SELECT codigo_activo FROM core.activo WHERE codigo_activo = %s", (codigo,))
     if not activo:
@@ -564,7 +639,7 @@ def activo_formulario_personalizado(codigo):
 
 
 @app.route("/activo/<codigo>/terceros/nuevo", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_tercero_nuevo(codigo):
     activo = query_one("SELECT codigo_activo FROM core.activo WHERE codigo_activo = %s", (codigo,))
     if not activo:
@@ -590,7 +665,7 @@ def activo_tercero_nuevo(codigo):
 
 
 @app.route("/activo/<codigo>/terceros/<int:tercero_id>/eliminar", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_tercero_eliminar(codigo, tercero_id):
     execute("DELETE FROM core.activo_tercero WHERE tercero_id = %s AND activo_codigo = %s", (tercero_id, codigo))
     registrar_evento(usuario_id=int(current_user.id), accion="ELIMINAR_TERCERO_ACTIVO", entidad_tipo="activo",
@@ -611,7 +686,7 @@ def _guardar_archivo_subido(archivo, carpeta, codigo):
 
 
 @app.route("/activo/<codigo>/adjuntos", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_adjunto_subir(codigo):
     activo = query_one("SELECT codigo_activo FROM core.activo WHERE codigo_activo = %s", (codigo,))
     if not activo:
@@ -648,7 +723,7 @@ def activo_adjunto_descargar(codigo, adjunto_id):
 
 
 @app.route("/activo/<codigo>/adjuntos/<int:adjunto_id>/eliminar", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_adjunto_eliminar(codigo, adjunto_id):
     adjunto = query_one("SELECT archivo_filename FROM core.activo_adjunto WHERE adjunto_id = %s AND activo_codigo = %s",
                          (adjunto_id, codigo))
@@ -664,7 +739,7 @@ def activo_adjunto_eliminar(codigo, adjunto_id):
 
 
 @app.route("/activo/<codigo>/documentos", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_documento_subir(codigo):
     activo = query_one("SELECT codigo_activo FROM core.activo WHERE codigo_activo = %s", (codigo,))
     if not activo:
@@ -706,7 +781,7 @@ def activo_documento_descargar(codigo, documento_id):
 
 
 @app.route("/activo/<codigo>/documentos/<int:documento_id>/eliminar", methods=["POST"])
-@role_required("ADMIN", "SUPERVISOR", "TECNICO")
+@role_required("ADMIN", "SUPERVISOR")  # Entrega 1: TECNICO solo consulta, no edita info maestra
 def activo_documento_eliminar(codigo, documento_id):
     documento = query_one("SELECT archivo_filename FROM core.activo_documento WHERE documento_id = %s AND activo_codigo = %s",
                            (documento_id, codigo))

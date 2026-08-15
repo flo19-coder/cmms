@@ -179,6 +179,42 @@ def test_tecnico_no_ve_dashboard_pero_si_kanban(client):
     assert client.get("/vista-arbol").status_code == 200
 
 
+# --- Entrega 1: permisos de creación/edición/retiro de activos --------
+# "Aplica permisos en el servidor, no solamente ocultando botones" --
+# estas rutas devuelven 403 con el rol equivocado ANTES de tocar la
+# base de datos (role_required corre antes que el cuerpo de la vista),
+# así que no necesitan mocks de DB para probarse.
+def test_admin_y_supervisor_ven_formulario_nuevo_activo(client):
+    login(client, "admin", "admin123")
+    resp = client.get("/activos/nuevo")
+    assert resp.status_code == 200
+    assert "Nuevo activo" in resp.get_data(as_text=True)
+
+
+def test_supervisor_ve_formulario_nuevo_activo(client):
+    login(client, "supervisor", "super123")
+    assert client.get("/activos/nuevo").status_code == 200
+
+
+def test_tecnico_no_puede_crear_ni_editar_ni_retirar_activos(client):
+    login(client, "tecnico", "tecnico123")
+    assert client.get("/activos/nuevo").status_code == 403
+    assert client.get("/activo/EQ-9999/editar").status_code == 403
+    assert client.post("/activo/EQ-9999/actualizar", data={}).status_code == 403
+    assert client.post("/activo/EQ-9999/retirar", data={"motivo": "x"}).status_code == 403
+
+
+def test_solo_admin_puede_retirar_no_supervisor(client):
+    login(client, "supervisor", "super123")
+    assert client.post("/activo/EQ-9999/retirar", data={"motivo": "x"}).status_code == 403
+
+
+def test_sin_login_redirige_a_login_para_activos_nuevo(client):
+    resp = client.get("/activos/nuevo", follow_redirects=False)
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
 def test_logout_saca_de_sesion(client):
     login(client, "admin", "admin123")
     assert client.get("/dashboard").status_code == 200

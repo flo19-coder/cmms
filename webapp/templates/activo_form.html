@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ "Nuevo activo" if modo == "nuevo" else "Editar " + (activo.codigo_activo or "") }}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>{{ "Nuevo activo" if modo == "nuevo" else "Editar activo" }}</h1>
+  <div class="muted">{% if modo == "editar" %}{{ activo.codigo_activo }}{% else %}El código no se puede cambiar después de creado{% endif %}</div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="card" style="padding:10px 14px; {% if category=='error' %}background:#FDECEA; color:#C0392B;{% else %}background:#E8F0FE; color:#1D6FE0;{% endif %} font-size:13px;">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="card">
+  <form method="post">
+    <div class="field-grid">
+      <div class="field-box">
+        <label>Código *</label>
+        {% if modo == "editar" %}
+          <input type="text" value="{{ activo.codigo_activo or '' }}" disabled>
+          <input type="hidden" name="codigo_activo" value="{{ activo.codigo_activo }}">
+        {% else %}
+          <input type="text" name="codigo_activo" required value="{{ activo.codigo_activo or '' }}" placeholder="ej. EQ-0121">
+        {% endif %}
+      </div>
+      <div class="field-box">
+        <label>Nombre *</label>
+        <input type="text" name="nombre" required value="{{ activo.nombre or '' }}">
+      </div>
+      <div class="field-box">
+        <label>Tipo de equipo *</label>
+        <input type="text" name="tipo_equipo" required value="{{ activo.tipo_equipo or '' }}" placeholder="ej. Chiller de Climatización">
+      </div>
+      <div class="field-box">
+        <label>Fabricante</label>
+        <input type="text" name="fabricante" value="{{ activo.fabricante or '' }}">
+      </div>
+      <div class="field-box">
+        <label>Modelo</label>
+        <input type="text" name="modelo" value="{{ activo.modelo or '' }}">
+      </div>
+      <div class="field-box">
+        <label>Número de serie</label>
+        <input type="text" name="numero_serie" value="{{ activo.numero_serie or '' }}">
+      </div>
+      <div class="field-box">
+        <label>Sede</label>
+        <input type="text" name="nivel_2_sede" value="{{ activo.nivel_2_sede or '' }}">
+      </div>
+      <div class="field-box">
+        <label>Servicio / Área</label>
+        <input type="text" name="nivel_3_servicio" value="{{ activo.nivel_3_servicio or '' }}">
+      </div>
+      <div class="field-box" style="grid-column:1/-1;">
+        <label>Ubicación jerárquica</label>
+        <input type="text" name="ubicacion_path" value="{{ activo.ubicacion_path or '' }}" placeholder="ej. CLINICA_INTL/Sede_Lima/UCI_Adultos">
+      </div>
+      <div class="field-box">
+        <label>Criticidad</label>
+        <select name="criticidad">
+          <option value="">—</option>
+          {% for c in criticidades %}<option value="{{ c }}" {% if activo.criticidad == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field-box">
+        <label>Horas esperadas de operación diaria</label>
+        <input type="number" step="0.1" min="0" max="24" name="horas_uso_promedio_diario" value="{{ activo.horas_uso_promedio_diario if activo.horas_uso_promedio_diario is not none else '' }}">
+      </div>
+      <div class="field-box">
+        <label>Fecha de instalación</label>
+        <input type="date" name="fecha_instalacion" value="{{ activo.fecha_instalacion or '' }}">
+      </div>
+      <div class="field-box">
+        <label>Estado</label>
+        <select name="estado">
+          {% for e in estados %}<option value="{{ e }}" {% if (activo.estado or 'OPERATIVO') == e %}selected{% endif %}>{{ e.replace('_', ' ').title() }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field-box" style="grid-column:1/-1;">
+        <label>Plan de mantenimiento</label>
+        <input type="text" name="plan_mantenimiento" value="{{ activo.plan_mantenimiento or '' }}">
+      </div>
+      <div class="field-box" style="grid-column:1/-1;">
+        <label>Notas</label>
+        <textarea name="notas" rows="3" style="border:1px solid #E4EDED; border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit;">{{ activo.notas or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn">{{ "Crear activo" if modo == "nuevo" else "Guardar cambios" }}</button>
+      <a href="{{ url_for('activo_detalle', codigo=activo.codigo_activo) if modo == 'editar' else url_for('index') }}" class="muted" style="align-self:center; text-decoration:none;">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% if modo == "editar" and activo.estado != "RETIRADO" %}
+<div class="card">
+  <h2>Retirar activo</h2>
+  <p class="muted" style="font-size:12px;">No borra el historial — OTs, lecturas, fotos y documentos se conservan. Solo bloquea nueva programación.</p>
+  <form method="post" action="{{ url_for('activo_retirar', codigo=activo.codigo_activo) }}" onsubmit="return confirm('¿Retirar este activo? Esta acción se puede revisar después editando el estado.');">
+    <div class="field-grid">
+      <div class="field-box" style="grid-column:1/-1;">
+        <label>Motivo *</label>
+        <input type="text" name="motivo" required placeholder="ej. Reemplazado por equipo nuevo EQ-0130">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-danger">Retirar activo</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}

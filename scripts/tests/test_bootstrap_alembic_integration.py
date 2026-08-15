@@ -48,12 +48,31 @@ def _postgres_disponible() -> bool:
 
 pytestmark = pytest.mark.skipif(not _postgres_disponible(), reason="requiere Postgres real vía CMMS_DW_*")
 
-MIGRACION_0002 = '''"""migración de prueba -- crea una tabla marcadora para demostrar
-que 'alembic upgrade head' ejecuta el CONTENIDO de 0002, no solo
-avanza el puntero de revisión.
 
-Revision ID: 0002_test_marker
-Revises: 0001_baseline
+def _head_real_actual() -> str:
+    """
+    Head real de alembic/versions/ (las migraciones YA commiteadas al
+    repo, sin contar la temporal que este test va a escribir) -- la
+    migración de prueba debe encadenar desde acá, no desde
+    '0001_baseline' a ciegas, o choca con cualquier migración real que
+    ya exista después del baseline (ej. 0002_activo_estado_lifecycle).
+    """
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    cfg = Config(os.path.join(REPO_ROOT, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(REPO_ROOT, "alembic"))
+    heads = ScriptDirectory.from_config(cfg).get_heads()
+    assert len(heads) == 1, f"se esperaba un único head real, hay {len(heads)}: {heads}"
+    return heads[0]
+
+
+MIGRACION_TEST_TEMPLATE = '''"""migración de prueba -- crea una tabla marcadora para demostrar
+que 'alembic upgrade head' ejecuta el CONTENIDO de la migración, no
+solo avanza el puntero de revisión.
+
+Revision ID: {revision}
+Revises: {down_revision}
 Create Date: 2026-01-01
 
 """
@@ -61,8 +80,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "0002_test_marker"
-down_revision = "0001_baseline"
+revision = "{revision}"
+down_revision = "{down_revision}"
 branch_labels = None
 depends_on = None
 
@@ -102,21 +121,26 @@ def base_de_prueba():
 @pytest.fixture
 def con_migracion_0002_temporal():
     """
-    Escribe una migración 0002 real y TEMPORAL en alembic/versions/
-    para la duración del test, y la borra al terminar -- no debe
-    quedar como parte del historial real de migraciones del proyecto.
+    Escribe una migración TEMPORAL en alembic/versions/, encadenada
+    dinámicamente desde el head real actual (para no chocar con
+    cualquier migración real que ya exista después del baseline), y la
+    borra al terminar -- no debe quedar como parte del historial real.
     """
-    path = os.path.join(REPO_ROOT, "alembic", "versions", "0002_test_marker.py")
+    revision_id = f"9999_test_marker_{uuid.uuid4().hex[:8]}"
+    contenido = MIGRACION_TEST_TEMPLATE.format(revision=revision_id, down_revision=_head_real_actual())
+
+    filename = f"{revision_id}.py"
+    path = os.path.join(REPO_ROOT, "alembic", "versions", filename)
     with open(path, "w", encoding="utf-8") as f:
-        f.write(MIGRACION_0002)
+        f.write(contenido)
     try:
-        yield
+        yield revision_id
     finally:
         os.remove(path)
         pycache = os.path.join(REPO_ROOT, "alembic", "versions", "__pycache__")
         if os.path.isdir(pycache):
             for fn in os.listdir(pycache):
-                if "0002_test_marker" in fn:
+                if revision_id in fn:
                     os.remove(os.path.join(pycache, fn))
 
 
@@ -154,25 +178,27 @@ def _revision_actual(nombre_db: str) -> str | None:
 
 
 def test_base_nueva_ejecuta_el_contenido_de_la_migracion_0002(base_de_prueba, con_migracion_0002_temporal, monkeypatch):
+    revision_esperada = con_migracion_0002_temporal
     bootstrap = _importar_bootstrap_apuntando_a(base_de_prueba)
 
     bootstrap.main()
 
     assert _tabla_existe(base_de_prueba, "_test_migracion_0002_ejecutada"), (
-        "alembic upgrade head debía correr el contenido real de 0002, no solo stampearla"
+        "alembic upgrade head debía correr el contenido real de la migración, no solo stampearla"
     )
-    assert _revision_actual(base_de_prueba) == "0002_test_marker"
+    assert _revision_actual(base_de_prueba) == revision_esperada
 
 
 def test_segunda_corrida_no_re_stampea_y_es_no_op_seguro(base_de_prueba, con_migracion_0002_temporal, monkeypatch):
+    revision_esperada = con_migracion_0002_temporal
     bootstrap = _importar_bootstrap_apuntando_a(base_de_prueba)
 
-    bootstrap.main()  # 1ra corrida: stamp 0001_baseline + upgrade -> ejecuta 0002
+    bootstrap.main()  # 1ra corrida: stamp 0001_baseline + upgrade -> ejecuta la migración de prueba
     assert bootstrap._tiene_revision_alembic() is True
 
     bootstrap.main()  # 2da corrida: NO debe re-stampear, debe ser no-op seguro
 
-    assert _revision_actual(base_de_prueba) == "0002_test_marker"
+    assert _revision_actual(base_de_prueba) == revision_esperada
     assert _tabla_existe(base_de_prueba, "_test_migracion_0002_ejecutada")
 
 
@@ -180,8 +206,10 @@ def test_base_existente_preexistente_de_antes_de_alembic_conserva_sus_datos(base
     """
     Simula el caso real (Render/local antes de este fix): una base que
     YA tenía datos y esquema pero SIN tabla alembic_version -- el
-    primer bootstrap debe marcarla en 0001_baseline sin tocar los
-    datos existentes.
+    primer bootstrap la marca en 0001_baseline y luego corre
+    'upgrade head' (que puede avanzar más allá si ya hay migraciones
+    reales en el repo, ej. 0002_activo_estado_lifecycle) SIN tocar los
+    datos preexistentes de una tabla que Alembic no conoce.
     """
     conn = psycopg2.connect(dbname=base_de_prueba, **ADMIN_PARAMS)
     conn.autocommit = True
@@ -203,4 +231,7 @@ def test_base_existente_preexistente_de_antes_de_alembic_conserva_sus_datos(base
     finally:
         conn.close()
 
-    assert _revision_actual(base_de_prueba) == "0001_baseline"
+    # Termina en el head REAL del repo (0001_baseline es solo el punto
+    # de partida del stamp condicional, no necesariamente el destino
+    # final si ya existen migraciones posteriores reales).
+    assert _revision_actual(base_de_prueba) == _head_real_actual()

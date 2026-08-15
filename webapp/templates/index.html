@@ -10,7 +10,7 @@
 
 <div class="card">
   <table>
-    <tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Sede / Servicio</th><th>Criticidad</th></tr>
+    <tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Sede / Servicio</th><th>Criticidad</th><th></th></tr>
     {% for a in activos %}
     <tr>
       <td><a href="/activo/{{ a.codigo_activo }}">{{ a.codigo_activo }}</a></td>
@@ -18,9 +18,18 @@
       <td>{{ a.tipo_equipo }}</td>
       <td>{{ a.nivel_2_sede }} / {{ a.nivel_3_servicio }}</td>
       <td>{{ a.criticidad }}</td>
+      <td style="text-align:right;">
+        {% if current_user.rol in ['ADMIN', 'SUPERVISOR'] %}
+        <a href="/activo/{{ a.codigo_activo }}/editar" class="muted" style="font-size:12px; text-decoration:none;">Editar</a>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>
 </div>
+
+{% if current_user.rol in ['ADMIN', 'SUPERVISOR'] %}
+<a href="/activos/nuevo" class="fab" title="Nuevo activo">+</a>
+{% endif %}
 
 {% endblock %}
