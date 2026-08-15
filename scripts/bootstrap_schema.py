@@ -1,13 +1,34 @@
 """
-Aplica sql/schema/*.sql (en orden) contra CMMS_DW_*, y despues marca la
-base en el baseline de Alembic (`alembic stamp head` -- ver alembic/
-env.py y ESPECIFICACION_CMMS_CODEX.md sección 10.5). Necesario en
-Render porque ahí no existe el mecanismo `docker-entrypoint-initdb.d`
-que usa Postgres local para auto-inicializarse — acá hay que correrlo a
-mano (o, como en el startCommand de render.yaml, en cada arranque). Es
-seguro correrlo repetidas veces: todo el esquema usa
-`CREATE TABLE/SCHEMA/INDEX IF NOT EXISTS` y `CREATE OR REPLACE VIEW`, y
-`alembic stamp` es idempotente (solo escribe la revisión actual).
+Aplica sql/schema/*.sql (en orden) contra CMMS_DW_*, y despues
+sincroniza Alembic. Necesario en Render porque ahí no existe el
+mecanismo `docker-entrypoint-initdb.d` que usa Postgres local para
+auto-inicializarse — acá hay que correrlo a mano (o, como en el
+startCommand de render.yaml, en cada arranque). Aplicar el SQL es
+seguro de repetir: todo el esquema usa
+`CREATE TABLE/SCHEMA/INDEX IF NOT EXISTS` y `CREATE OR REPLACE VIEW`.
+
+Sincronización de Alembic -- CORREGIDO (antes hacía `alembic stamp
+head` incondicional en cada arranque, lo cual es peligroso en cuanto
+exista una migración real después de `0001_baseline`: `stamp` NO
+ejecuta el contenido de la migración, solo escribe el número de
+revisión, así que una `0002` quedaría "marcada como aplicada" sin
+haber corrido nunca):
+
+  1. Si la base NO tiene ninguna revisión de Alembic registrada todavía
+     (recién creada, o preexistente de antes de introducir Alembic en
+     este repo): se marca en `0001_baseline` -- esa revisión representa
+     exactamente el estado que `aplicar_schema_sql()` acaba de
+     garantizar, nunca "head" a ciegas.
+  2. Siempre, después, se corre `alembic upgrade head` -- así cualquier
+     migración real posterior a la baseline (`0002`, `0003`...) SÍ se
+     ejecuta de verdad la primera vez que el proceso arranca con ella
+     presente.
+  3. Si la base ya tenía una revisión, el paso 1 se salta por completo
+     (nunca se vuelve a hacer `stamp`) y solo corre el `upgrade head`
+     del paso 2, que es un no-op seguro si ya está al día.
+
+Ver scripts/tests/test_bootstrap_alembic_integration.py para la prueba
+contra Postgres real que demuestra el punto 2.
 
 A partir de este paquete, cualquier cambio de esquema NUEVO se hace con
 una migración de Alembic (`alembic revision -m "..."`, editar
@@ -59,17 +80,45 @@ def aplicar_schema_sql() -> int:
     return len(archivos)
 
 
-def marcar_baseline_alembic() -> None:
+def _tiene_revision_alembic() -> bool:
+    """True si la base ya tiene una fila en `alembic_version` (esté o
+    no la tabla creada todavía cuenta como "no tiene revisión")."""
+    conn = psycopg2.connect(**DB_PARAMS)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema = current_schema() AND table_name = 'alembic_version')"
+            )
+            if not cur.fetchone()[0]:
+                return False
+            cur.execute("SELECT version_num FROM alembic_version LIMIT 1")
+            return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
+def _alembic_config() -> Config:
     cfg = Config(os.path.join(REPO_ROOT, "alembic.ini"))
     cfg.set_main_option("script_location", os.path.join(REPO_ROOT, "alembic"))
-    command.stamp(cfg, "head")
+    return cfg
+
+
+def sincronizar_alembic() -> None:
+    cfg = _alembic_config()
+    if _tiene_revision_alembic():
+        print("La base ya tiene una revisión de Alembic registrada -- no se vuelve a stampear.")
+    else:
+        print("La base no tiene revisión de Alembic todavía -- marcando '0001_baseline'.")
+        command.stamp(cfg, "0001_baseline")
+    command.upgrade(cfg, "head")
 
 
 def main():
     n = aplicar_schema_sql()
     print(f"Esquema aplicado correctamente ({n} archivo(s)).")
-    marcar_baseline_alembic()
-    print("Base marcada en el baseline de Alembic (alembic stamp head).")
+    sincronizar_alembic()
+    print("Alembic sincronizado (stamp condicional + upgrade head).")
 
 
 if __name__ == "__main__":
