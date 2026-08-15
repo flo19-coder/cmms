@@ -6,6 +6,14 @@ login sin tener que crear usuarios a mano primero.
 con la clínica de verdad: correr `manage_users.py deactivate` sobre
 estas 4 cuentas y crear las reales con `manage_users.py create`.
 
+Fase 0 / AC-G06 (ESPECIFICACION_CMMS_CODEX.md) -- "Ningún ambiente
+productivo inicia con claves o usuarios demo": si CMMS_ENV=production,
+este script se niega a crear los usuarios demo por defecto. Si es una
+decisión consciente del dueño del producto (ej. una demo pública
+temporal), hay que setear CMMS_ALLOW_DEMO_SEED=true explícitamente
+-- ver sección 21 de la especificación ("decisiones que el dueño del
+producto debe confirmar antes de producción").
+
 Uso:
     python3 scripts/seed_demo_users.py
 """
@@ -31,7 +39,21 @@ DEMO_USERS = [
 ]
 
 
+def debe_omitir_seed(cmms_env: str, allow_demo_seed_raw: str) -> bool:
+    """Puro / testeable sin DB -- ver webapp/tests/test_config.py."""
+    return cmms_env.strip().lower() == "production" and allow_demo_seed_raw.strip().lower() != "true"
+
+
 def main():
+    cmms_env = os.environ.get("CMMS_ENV", "development")
+    if debe_omitir_seed(cmms_env, os.environ.get("CMMS_ALLOW_DEMO_SEED", "")):
+        print(
+            "CMMS_ENV=production: no se crean usuarios demo por defecto "
+            "(ver ESPECIFICACION_CMMS_CODEX.md, AC-G06). Si es una decisión "
+            "consciente del dueño del producto, setea CMMS_ALLOW_DEMO_SEED=true."
+        )
+        return
+
     conn = psycopg2.connect(**DB_PARAMS)
     creados = 0
     try:

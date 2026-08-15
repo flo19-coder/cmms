@@ -190,6 +190,10 @@ services:
       CMMS_DW_PASSWORD: cmms_local_pw_change_me
       PORT: "5090"
       FLASK_DEBUG: "false"
+      # CMMS_ENV=development -- ver webapp/config.py y ESPECIFICACION_CMMS_CODEX.md
+      # (Fase 0 / AC-G06). En production estos 2 valores por defecto quedan
+      # prohibidos y hay que setearlos explícitos.
+      CMMS_ENV: development
       CMMS_API_KEY: cmms-local-dev-key
       CMMS_SECRET_KEY: dev-secret-key-CHANGE-EN-PRODUCCION   # firma las cookies de sesión — CAMBIAR
     volumes:

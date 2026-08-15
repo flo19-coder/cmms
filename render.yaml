@@ -43,6 +43,8 @@ services:
         fromDatabase:
           name: cmms-dw
           property: password
+      - key: CMMS_ENV
+        value: production
       - key: CMMS_SECRET_KEY
         generateValue: true
       - key: CMMS_API_KEY
@@ -50,4 +52,12 @@ services:
       - key: FLASK_DEBUG
         value: "false"
       - key: CMMS_SHOW_DEMO_LOGIN_HINT
+        value: "true"
+      # DECISIÓN DEL DUEÑO DEL PRODUCTO (ver ESPECIFICACION_CMMS_CODEX.md,
+      # sección 21) -- CMMS_ENV=production normalmente PROHÍBE crear los 4
+      # usuarios demo (admin123 etc, AC-G06). Se dejó encendido a propósito
+      # acá porque esta instancia de Render es una demo pública temporal,
+      # no el CMMS real de la clínica. Poner en "false" (o quitar la
+      # variable) antes de usar esto con datos/usuarios reales.
+      - key: CMMS_ALLOW_DEMO_SEED
         value: "true"

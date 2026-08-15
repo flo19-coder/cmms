@@ -15,11 +15,11 @@ cualquier celular en la red de la clínica.
 """
 from __future__ import annotations
 
-import os
 from functools import wraps
 
 from flask import Blueprint, jsonify, request
 
+from config import require_secret
 from queries import (
     get_dashboard_data, get_vista_arbol_data, get_kanban_data,
     get_panel_hoy_data, get_activos_list, get_activo_detalle, NotFoundError,
@@ -27,7 +27,8 @@ from queries import (
 
 api_bp = Blueprint("api", __name__)
 
-API_KEY = os.environ.get("CMMS_API_KEY", "cmms-local-dev-key")
+# Fase 0 / AC-G06 (ESPECIFICACION_CMMS_CODEX.md) -- ver webapp/config.py
+API_KEY = require_secret("CMMS_API_KEY", "cmms-local-dev-key")
 
 
 def require_api_key(fn):

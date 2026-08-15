@@ -22,6 +22,7 @@ from flask import Flask, render_template, abort, redirect, url_for, request, jso
 from flask_login import login_user, logout_user, login_required, current_user
 from psycopg2.extras import Json
 
+from config import require_secret
 from db import health_check, DatabaseError, execute, query, query_one
 from queries import (
     get_dashboard_data, get_vista_arbol_data, get_kanban_data,
@@ -44,7 +45,10 @@ logging.basicConfig(
 logger = logging.getLogger("cmms.app")
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("CMMS_SECRET_KEY", "dev-secret-key-CHANGE-EN-PRODUCCION")
+# Fase 0 / AC-G06 (ESPECIFICACION_CMMS_CODEX.md) -- en CMMS_ENV=production
+# esto exige la variable de entorno explícita y no arranca con un
+# secreto por defecto débil.
+app.secret_key = require_secret("CMMS_SECRET_KEY", "dev-secret-key-CHANGE-EN-PRODUCCION")
 app.register_blueprint(api_bp, url_prefix="/api")
 login_manager.init_app(app)
 
