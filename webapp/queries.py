@@ -58,6 +58,7 @@ def get_vista_arbol_data() -> dict:
     activos = query(
         "SELECT codigo_activo, nombre, tipo_equipo, criticidad, fuera_de_servicio, "
         "nivel_2_sede, nivel_3_servicio FROM mart.dim_activo "
+        "WHERE nivel_2_sede = 'Sede Lima' "
         "ORDER BY nivel_2_sede, nivel_3_servicio, nombre"
     )
     arbol: dict = {}
