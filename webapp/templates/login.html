@@ -5,49 +5,270 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iniciar sesión — CMMS Infraestructura Clínica</title>
   <style>
-    :root { --teal-dark:#015B66; --teal:#028090; --seafoam:#00A896; --ink:#16262B; --muted:#5C7A7D; --danger:#C0392B; }
+    :root {
+      --color-bg: #eef0f1;
+      --color-text: #1d1f20;
+      --color-divider: rgba(29,31,32,.16);
+      --color-accent-100: #eef6ff;
+      --color-accent-300: #b5d9fd;
+      --color-accent-500: #749dc4;
+      --color-accent-600: #597ea3;
+      --color-accent-700: #416180;
+      --color-accent-800: #2c455d;
+      --color-accent-900: #1d2d3d;
+      --font-heading: "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
+      --font-body: -apple-system, "Segoe UI", system-ui, sans-serif;
+      --space-1: 4px; --space-2: 7px; --space-3: 10px; --space-4: 14px; --space-6: 20px; --space-8: 27px;
+    }
     * { box-sizing: border-box; }
-    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-           background: linear-gradient(160deg, var(--teal-dark), var(--teal));
-           font-family: -apple-system, "Segoe UI", Calibri, Arial, sans-serif; }
-    .box { background:white; border-radius:14px; padding:32px; width:100%; max-width:360px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
-    h1 { font-size:20px; margin:0 0 4px; color:var(--ink); }
-    p.sub { color:var(--muted); font-size:13px; margin:0 0 22px; }
-    label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:5px; margin-top:14px; text-transform:uppercase; letter-spacing:.03em; }
-    input { width:100%; padding:10px 12px; border:1px solid #DCE7E7; border-radius:8px; font-size:14px; }
-    input:focus { outline:2px solid var(--seafoam); border-color:transparent; }
-    button { width:100%; margin-top:22px; background:var(--teal); color:white; border:none; padding:11px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; }
-    button:hover { background:var(--teal-dark); }
-    .flash { background:#FDECEA; color:var(--danger); font-size:13px; padding:10px 12px; border-radius:8px; margin-bottom:6px; }
-    .flash-info { background:#E6F4F3; color:var(--teal-dark); }
-    .demo { margin-top:20px; font-size:11px; color:var(--muted); background:#F4F8F8; padding:10px; border-radius:8px; line-height:1.6; }
+    html, body { margin: 0; height: 100%; background: var(--color-bg); font-family: var(--font-body); color: var(--color-text); }
+    a { color: var(--color-accent-700); }
+
+    @keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    .stage { position: relative; width: 100%; height: 100vh; overflow: hidden; background: var(--color-bg); }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .stage .veil-top { position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(180deg, rgba(238,240,241,.6) 0%, transparent 20%, transparent 65%, rgba(238,240,241,.75) 100%); }
+    .stage .veil-glow { position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse 70% 55% at 72% 45%, rgba(238,240,241,.35) 0%, transparent 100%); }
+
+    nav.top { position: relative; z-index: 3; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-8); }
+    nav.top span { font-family: var(--font-heading); font-size: 19px; letter-spacing: .02em; text-transform: uppercase; }
+
+    .status { position: absolute; left: 0; right: 0; top: 42%; display: flex; justify-content: center;
+      pointer-events: none; z-index: 2; font-family: var(--font-heading); font-size: 13px;
+      letter-spacing: .14em; text-transform: uppercase; color: var(--color-accent-700);
+      transition: opacity .4s; }
+
+    .card-wrap { position: absolute; inset: 0; top: 0; display: flex; align-items: center; justify-content: center; z-index: 3; }
+    .card { position: relative; width: min(400px, 88vw); padding: var(--space-8);
+      background: rgba(238,240,241,.82); backdrop-filter: blur(6px);
+      border: 1px solid var(--color-divider); opacity: 0; }
+    .card.revealed { animation: cardIn .5s ease .1s both; }
+    .corner { position: absolute; width: 11px; height: 11px; color: rgba(29,31,32,.55); }
+    .corner::before, .corner::after { content: ""; position: absolute; background: currentColor; }
+    .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
+    .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
+    .corner.tl { top: -6px; left: -6px; } .corner.tr { top: -6px; right: -6px; }
+    .corner.bl { bottom: -6px; left: -6px; } .corner.br { bottom: -6px; right: -6px; }
+
+    .brand { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+    .brand .mark { width: 44px; height: 44px; flex: none; background: linear-gradient(135deg, var(--color-accent-500), var(--color-accent-800));
+      display: flex; align-items: center; justify-content: center; }
+    .brand .name { font-family: var(--font-heading); font-size: 20px; line-height: 1.15; }
+    .sub { font-size: 13px; color: rgba(29,31,32,.65); margin: 0 0 var(--space-4); }
+    .hr { position: relative; height: 1px; background: var(--color-divider); margin-bottom: var(--space-6); }
+    .hr::before { content: ""; position: absolute; left: 0; top: 0; width: 48px; height: 1px; background: var(--color-accent-600); }
+
+    form { display: flex; flex-direction: column; gap: var(--space-4); }
+    .field label { display: block; font-size: 12px; margin-bottom: 5px; color: rgba(29,31,32,.7); }
+    .field .wrap { position: relative; }
+    .field svg.icon { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .input { width: 100%; min-height: 38px; padding: 6px 10px; padding-left: 34px; font: inherit; font-size: 14px;
+      color: var(--color-text); background: rgba(255,255,255,.55); border: 1px solid var(--color-divider); border-radius: 0; }
+    .input:focus-visible { outline: none; border-color: var(--color-accent-600); }
+    #pass { padding-right: 34px; }
+    .toggle-pw { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); background: none; border: none;
+      padding: 0; cursor: pointer; color: rgba(29,31,32,.5); display: flex; }
+
+    .btn-submit { margin-top: var(--space-1); background: linear-gradient(135deg, var(--color-accent-600), var(--color-accent-800));
+      color: #f2f2f3; border: 1px solid var(--color-accent-700); padding: var(--space-2) var(--space-4);
+      font-family: var(--font-heading); font-size: 14px; cursor: pointer; position: relative;
+      display: flex; align-items: center; justify-content: center; gap: var(--space-2); }
+    .btn-submit:hover { filter: brightness(1.05); }
+
+    .flash { font-size: 13px; padding: 10px 12px; margin-bottom: var(--space-3); border: 1px solid var(--color-divider); }
+    .flash-error { background: rgba(192,57,43,.1); color: #8f2c22; }
+    .flash-info { background: var(--color-accent-100); color: var(--color-accent-800); }
+
+    .demo { margin-top: var(--space-4); font-size: 11px; color: rgba(29,31,32,.65);
+      background: rgba(255,255,255,.5); border: 1px solid var(--color-divider); padding: var(--space-3); line-height: 1.6; }
+
+    @media (max-width: 480px) { nav.top span { font-size: 15px; } }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>🏥 CMMS Infraestructura Clínica</h1>
-    <p class="sub">Inicia sesión para acceder al dashboard, kanban y gestión.</p>
+  <div class="stage">
+    <canvas id="bim-canvas"></canvas>
+    <div class="veil-top"></div>
+    <div class="veil-glow"></div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, msg in messages %}
-        <div class="flash {% if category == 'info' %}flash-info{% endif %}">{{ msg }}</div>
-      {% endfor %}
-    {% endwith %}
+    <nav class="top">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#416180" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/></svg>
+      <span>CMMS Infraestructura Clínica</span>
+    </nav>
 
-    <form method="post">
-      <label>Usuario</label>
-      <input type="text" name="username" required autofocus>
-      <label>Contraseña</label>
-      <input type="password" name="password" required>
-      <button type="submit">Ingresar</button>
-    </form>
+    <div class="status" id="status-label">Cargando modelo BIM…</div>
 
-    {% if show_demo_hint %}
-    <div class="demo">
-      <strong>Credenciales demo</strong> (cambiar en producción — ver README):<br>
-      admin / admin123 · supervisor / super123 · tecnico / tecnico123
+    <div class="card-wrap">
+      <div class="card" id="login-card">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+        <div class="brand">
+          <div class="mark">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="1.5"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/></svg>
+          </div>
+          <div class="name">CMMS<br>Infraestructura Clínica</div>
+        </div>
+        <p class="sub">Plataforma integral para la gestión y mantenimiento de infraestructura clínica.</p>
+        <div class="hr"></div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, msg in messages %}
+            <div class="flash {% if category == 'info' %}flash-info{% else %}flash-error{% endif %}">{{ msg }}</div>
+          {% endfor %}
+        {% endwith %}
+
+        <form method="post">
+          <div class="field">
+            <label for="user">Usuario</label>
+            <div class="wrap">
+              <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#416180" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+              <input class="input" id="user" name="username" type="text" placeholder="Ingrese su usuario" autocomplete="username" required autofocus>
+            </div>
+          </div>
+          <div class="field">
+            <label for="pass">Contraseña</label>
+            <div class="wrap">
+              <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#416180" stroke-width="1.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input class="input" id="pass" name="password" type="password" placeholder="Ingrese su contraseña" autocomplete="current-password" required>
+              <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Mostrar contraseña">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn-submit">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            Ingresar
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </form>
+
+        {% if show_demo_hint %}
+        <div class="demo">
+          <strong>Credenciales demo</strong> (cambiar en producción — ver README):<br>
+          admin / admin123 · supervisor / super123 · tecnico / tecnico123
+        </div>
+        {% endif %}
+      </div>
     </div>
-    {% endif %}
   </div>
+
+  <script>
+    document.getElementById("toggle-pw").addEventListener("click", function () {
+      var pass = document.getElementById("pass");
+      pass.type = pass.type === "password" ? "text" : "password";
+    });
+
+    function revealCard(label) {
+      var statusEl = document.getElementById("status-label");
+      var cardEl = document.getElementById("login-card");
+      if (cardEl.classList.contains("revealed")) return;
+      statusEl.style.opacity = "0";
+      statusEl.textContent = label || "Bienvenido";
+      cardEl.classList.add("revealed");
+    }
+
+    // Si el modelo 3D no carga (WebGL deshabilitado, red lenta, etc.) la
+    // tarjeta de login igual aparece a los pocos segundos -- nunca debe
+    // quedar bloqueada detrás de la animación.
+    var fallbackTimer = setTimeout(function () { revealCard("Bienvenido"); }, 4500);
+
+    (async function () {
+      try {
+        var canvas = document.getElementById("bim-canvas");
+        var THREE = await import("/static/vendor/three.module.js");
+        var { createBuilding } = await import("/static/vendor/bim-building-model.js");
+
+        var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+
+        scene.background = new THREE.Color(0xeef0f1);
+        scene.fog = new THREE.Fog(0xeef0f1, 26, 70);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0xaebdc9, 1.15));
+        var key = new THREE.DirectionalLight(0xffffff, 1.5);
+        key.position.set(12, 18, 10);
+        scene.add(key);
+        var fill = new THREE.DirectionalLight(0x8fa9c2, 0.5);
+        fill.position.set(-10, 6, -8);
+        scene.add(fill);
+
+        var built = createBuilding(THREE);
+        var group = built.group, columns = built.columns, pipes = built.pipes, floors = built.floors;
+        scene.add(group);
+
+        var box = new THREE.Box3().setFromObject(group);
+        var center = box.getCenter(new THREE.Vector3());
+        var size = box.getSize(new THREE.Vector3());
+        var radius = Math.max(size.x, size.y, size.z) * 0.62;
+        group.position.sub(new THREE.Vector3(center.x, box.min.y, center.z));
+
+        function resize() {
+          var w = canvas.clientWidth, h = canvas.clientHeight;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+        window.addEventListener("resize", resize);
+        resize();
+
+        var angle = Math.PI * 0.28;
+        var dist = radius * 3.1;
+        function updateCamera() {
+          camera.position.set(Math.sin(angle) * dist, radius * 1.3, Math.cos(angle) * dist);
+          camera.lookAt(0, radius * 0.5, 0);
+        }
+        updateCamera();
+
+        var start = performance.now();
+        var colDur = 700, pipeStart = colDur * 0.55, pipeDur = 500;
+        var floorsStart = colDur + 150, perFloor = 90, riseDur = 260;
+        var totalAssembly = floorsStart + floors.length * perFloor + riseDur + 300;
+        var done = false;
+
+        function animate(t) {
+          var elapsed = t - start;
+          angle += 0.0016;
+          updateCamera();
+
+          columns.forEach(function (c) {
+            var p = Math.min(1, Math.max(0, elapsed / colDur));
+            var eased = 1 - Math.pow(1 - p, 3);
+            c.obj.scale.y = Math.max(0.001, eased);
+            c.obj.position.y = c.baseY * eased;
+          });
+          pipes.forEach(function (pi) {
+            var p = Math.min(1, Math.max(0, (elapsed - pipeStart) / pipeDur));
+            var eased = 1 - Math.pow(1 - p, 3);
+            pi.obj.scale.y = Math.max(0.001, eased);
+            pi.obj.position.y = pi.baseY * eased;
+          });
+          floors.forEach(function (f, i) {
+            var localStart = floorsStart + i * perFloor;
+            var p = Math.min(1, Math.max(0, (elapsed - localStart) / riseDur));
+            var eased = 1 - Math.pow(1 - p, 3);
+            f.obj.scale.y = Math.max(0.001, eased);
+            f.obj.position.y = f.targetY * (1 - (1 - eased) * 0.15) - (1 - eased) * 0.3;
+          });
+
+          if (!done && elapsed > totalAssembly) {
+            done = true;
+            clearTimeout(fallbackTimer);
+            revealCard("Bienvenido");
+          }
+          renderer.render(scene, camera);
+          requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+      } catch (err) {
+        console.error("BIM login scene:", err);
+        clearTimeout(fallbackTimer);
+        revealCard("Bienvenido");
+      }
+    })();
+  </script>
 </body>
 </html>
