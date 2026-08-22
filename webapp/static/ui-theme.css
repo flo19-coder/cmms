@@ -1,0 +1,150 @@
+/* ui-theme.css — tipografía + capa de movimiento para CMMS Infraestructura
+   Se carga DESPUÉS del <style> de base.html: solo añade fuentes, ritmo
+   tipográfico y transiciones. No cambia la paleta ni la estructura. */
+
+/* Fuentes auto-hospedadas en vez de @import a Google Fonts (mismo criterio
+   que chart.umd.js y el login 3D: el CMMS no debe depender de un CDN
+   externo para verse bien en la demo). Un solo archivo variable cubre los
+   3 pesos declarados por familia -- ver notas del paquete de diseño. */
+@font-face {
+  font-family: "Archivo"; font-style: normal; font-weight: 500;
+  font-display: swap; src: url("fonts/archivo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo"; font-style: normal; font-weight: 600;
+  font-display: swap; src: url("fonts/archivo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo"; font-style: normal; font-weight: 700;
+  font-display: swap; src: url("fonts/archivo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo Narrow"; font-style: normal; font-weight: 600;
+  font-display: swap; src: url("fonts/archivo-narrow.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo Narrow"; font-style: normal; font-weight: 700;
+  font-display: swap; src: url("fonts/archivo-narrow.woff2") format("woff2");
+}
+
+:root {
+  --font-ui: "Archivo", -apple-system, "Segoe UI", Calibri, Arial, sans-serif;
+  --font-num: "Archivo Narrow", "Archivo", Arial, sans-serif;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --lift: 0 18px 38px -20px rgba(29, 111, 224, .38);
+  --ring: 0 0 0 3px rgba(45, 127, 249, .18);
+}
+
+body { font-family: var(--font-ui); letter-spacing: -0.005em; }
+
+h1, h2, h3, .brand, .kpi .num, .badge, th {
+  font-family: var(--font-ui);
+}
+h1 { font-weight: 700; letter-spacing: -0.022em; }
+h2 { font-weight: 600; letter-spacing: .06em; }
+.brand { font-weight: 700; letter-spacing: -0.02em; }
+
+/* Cifras: ancho tabular + condensada para que los KPI no bailen al animarse */
+.kpi .num, .progress-label, .code-badge, td.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.kpi .num { font-weight: 700; }
+.kpi .lbl { letter-spacing: .04em; text-transform: uppercase; font-weight: 600; }
+
+/* ---------- Movimiento ---------- */
+
+/* Tarjetas: elevación + inclinación 3D suave hacia el cursor (JS fija --rx/--ry) */
+.card {
+  transition: transform .45s var(--ease), box-shadow .45s var(--ease);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.card[data-tilted] {
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-4px) scale(1.008);
+  box-shadow: var(--lift);
+}
+
+/* Botones magnéticos: JS mueve --mx/--my unos píxeles hacia el puntero */
+a.btn, button.btn, .btn-outline, .btn-danger, .fab, .icon-btn, .view-switcher a, .hamburger-btn {
+  transition: transform .3s var(--ease), background .25s ease, color .25s ease, box-shadow .3s ease;
+  transform: translate(var(--mx, 0px), var(--my, 0px));
+}
+a.btn:hover, button.btn:hover:not(:disabled) { box-shadow: 0 12px 24px -12px rgba(45, 127, 249, .7); }
+.btn-outline:hover { background: #E8F0FE; }
+.fab:hover { transform: translate(var(--mx, 0px), var(--my, 0px)) scale(1.07) rotate(90deg); }
+.icon-btn:hover, .view-switcher a:hover { box-shadow: var(--ring); }
+
+/* Foco visible y coherente (accesibilidad) */
+:is(a, button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: 8px;
+}
+
+/* Menú lateral: apertura con easing y entrada escalonada de los enlaces */
+.drawer { transition: left .34s var(--ease), box-shadow .34s ease; }
+.drawer-overlay { transition: opacity .28s ease; }
+.drawer-nav a { transition: background .2s ease, transform .28s var(--ease), padding-left .28s var(--ease); }
+.drawer-nav a:hover { transform: translateX(3px); padding-left: 16px; }
+#nav-toggle:checked ~ .drawer .drawer-nav a { animation: slideIn .42s var(--ease) both; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(1) { animation-delay: .04s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(2) { animation-delay: .07s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(3) { animation-delay: .10s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(4) { animation-delay: .13s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(5) { animation-delay: .16s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(6) { animation-delay: .19s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(7) { animation-delay: .22s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(8) { animation-delay: .25s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(9) { animation-delay: .28s; }
+#nav-toggle:checked ~ .drawer .drawer-nav a:nth-child(n+10) { animation-delay: .31s; }
+
+/* Filas de tabla y listas */
+tbody tr { transition: background .2s ease, box-shadow .2s ease; }
+tbody tr:hover { box-shadow: inset 3px 0 0 var(--teal); }
+.row { transition: background .2s ease, padding-left .25s var(--ease); }
+.row:hover { background: var(--offwhite); padding-left: 6px; }
+
+/* Pestañas laterales de la ficha */
+.tabs-nav button { transition: background .25s ease, color .25s ease, transform .25s var(--ease); }
+.tabs-nav button:hover { transform: translateX(3px); }
+.tab-panel.active { animation: riseIn .4s var(--ease) both; }
+
+/* Barra de progreso: crece desde 0 al aparecer */
+.progress-bar-fill { transition: width .9s var(--ease); }
+
+/* Badges y avatares */
+.badge, .code-badge { transition: transform .25s var(--ease); }
+.badge:hover { transform: translateY(-1px) scale(1.04); }
+.avatar-circle { transition: transform .3s var(--ease), box-shadow .3s ease; }
+.avatar-circle:hover { transform: scale(1.12); box-shadow: var(--ring); }
+
+/* Aparición al hacer scroll (JS añade data-reveal / data-shown) */
+[data-reveal] { opacity: 0; }
+[data-reveal][data-shown] { animation: riseIn .6s var(--ease) both; }
+
+/* Halo que sigue al cursor (lo inserta ui-motion.js) */
+#cursor-glow {
+  position: fixed; top: 0; left: 0; width: 460px; height: 460px; margin: -230px 0 0 -230px;
+  border-radius: 50%; pointer-events: none; z-index: 1;
+  background: radial-gradient(circle, rgba(45, 127, 249, .16), transparent 62%);
+  filter: blur(10px); transform: translate3d(-9999px, -9999px, 0);
+}
+
+/* Onda al pulsar */
+.ripple {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  background: rgba(255, 255, 255, .5); transform: scale(0); animation: ripple .55s ease-out forwards;
+}
+a.btn, button.btn, .fab, .btn-outline, .btn-danger { position: relative; overflow: hidden; }
+
+@keyframes riseIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes ripple { to { transform: scale(2.6); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001s !important; transition-duration: .001s !important; }
+  #cursor-glow { display: none; }
+  [data-reveal] { opacity: 1; }
+}

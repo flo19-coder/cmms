@@ -124,6 +124,7 @@
     .dot-finalizada { background: #0E7C4A; }
     .dot-cancelada { background: #9AA5B1; }
   </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui-theme.css') }}">
 </head>
 <body>
   <input type="checkbox" id="nav-toggle">
@@ -196,5 +197,6 @@
   <main style="max-width:1100px;">
     {% block content %}{% endblock %}
   </main>
+  <script src="{{ url_for('static', filename='ui-motion.js') }}" defer></script>
 </body>
 </html>
