@@ -158,6 +158,11 @@ def build_dag(module_name: str, schedule: str) -> DAG:
         schedule_interval=schedule,
         start_date=datetime(2026, 1, 1),
         catchup=False,
+        # El proyecto usa un dataset curado (solo Sede Lima) para la demo;
+        # estos DAGs generan datos sintéticos de las 5 sedes originales y
+        # los sobrescribirían en cada corrida. Pausados por defecto -- si
+        # se necesita volver a generar datos multi-sede, despausar a mano.
+        is_paused_upon_creation=True,
         tags=["cmms", "clinica", "demo" if USE_DEMO else "produccion"],
     ) as dag:
         PythonOperator(
@@ -181,6 +186,7 @@ def build_dag_medidores() -> DAG:
         schedule_interval="*/30 * * * *",   # cada 30 min — dato casi tiempo real
         start_date=datetime(2026, 1, 1),
         catchup=False,
+        is_paused_upon_creation=True,  # ver comentario en build_dag()
         tags=["cmms", "clinica", "monitoreo", "demo" if USE_DEMO else "produccion"],
     ) as dag:
         t_catalogo = PythonOperator(
